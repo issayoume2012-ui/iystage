@@ -1289,7 +1289,8 @@ elif page == "Rapport PDF":
     ))
     styles.add(ParagraphStyle(
         name="XCaption", parent=styles["BodyText"], fontName="Helvetica-Oblique",
-        fontSize=7.2, leading=8.5, alignment=TA_CENTER, textColor=GREY_500,
+        fontSize=7.0, leading=8.2, alignment=TA_CENTER, textColor=GREY_500,
+        wordWrap="CJK", splitLongWords=True,
         spaceBefore=1, spaceAfter=1
     ))
     styles.add(ParagraphStyle(
@@ -1437,18 +1438,21 @@ elif page == "Rapport PDF":
             photo_cells = []
             for index, ph in enumerate(photos, 1):
                 caption = ph.get("caption") or ph.get("filename") or f"Photo {index}"
+                caption = str(caption).replace("\n", " ").strip()
+                if len(caption) > 240:
+                    caption = caption[:237] + "…"
                 raw = ph.get("data")
                 if raw:
-                    photo_cells.append(KeepTogether([
-                        RawPhotoFlowable(raw, max_width=7.1*cm, max_height=5.8*cm),
-                        Spacer(1, 0.08*cm),
+                    photo_cells.append([
+                        RawPhotoFlowable(raw, max_width=6.6*cm, max_height=4.9*cm),
+                        Spacer(1, 0.06*cm),
                         P(f"<b>Photo {index} —</b> {caption}", "XCaption")
-                    ]))
+                    ])
                 else:
-                    photo_cells.append(KeepTogether([
+                    photo_cells.append([
                         P(f"<b>Photo {index}</b>", "XCaption"),
                         P("Données image absentes.", "XSmall")
-                    ]))
+                    ])
 
             photo_rows = []
             for i in range(0, len(photo_cells), 2):
@@ -1461,7 +1465,9 @@ elif page == "Rapport PDF":
                 photo_rows,
                 colWidths=[8.15*cm, 8.15*cm],
                 hAlign="CENTER",
-                repeatRows=0
+                repeatRows=0,
+                splitByRow=1,
+                splitInRow=1
             )
             photo_table.setStyle(TableStyle([
                 ("VALIGN", (0,0), (-1,-1), "TOP"),
@@ -1470,8 +1476,6 @@ elif page == "Rapport PDF":
                 ("RIGHTPADDING", (0,0), (-1,-1), 3),
                 ("TOPPADDING", (0,0), (-1,-1), 5),
                 ("BOTTOMPADDING", (0,0), (-1,-1), 8),
-                ("LINEBELOW", (0,0), (-1,-1), 0, colors.white),
-                ("BOX", (0,0), (-1,-1), 0, colors.white),
             ]))
             story += [photo_table, Spacer(1, 0.2*cm)]
 
@@ -1627,18 +1631,21 @@ elif page == "Rapport PDF":
             photo_cells = []
             for index, ph in enumerate(photos, 1):
                 caption = ph.get("caption") or ph.get("filename") or f"Photo {index}"
+                caption = str(caption).replace("\n", " ").strip()
+                if len(caption) > 240:
+                    caption = caption[:237] + "…"
                 raw = ph.get("data")
                 if raw:
-                    photo_cells.append(KeepTogether([
-                        RawPhotoFlowable(raw, max_width=7.1*cm, max_height=5.8*cm),
-                        Spacer(1, 0.08*cm),
+                    photo_cells.append([
+                        RawPhotoFlowable(raw, max_width=6.6*cm, max_height=4.9*cm),
+                        Spacer(1, 0.06*cm),
                         P(f"<b>Photo {index} —</b> {caption}", "XCaption")
-                    ]))
+                    ])
                 else:
-                    photo_cells.append(KeepTogether([
+                    photo_cells.append([
                         P(f"<b>Photo {index}</b>", "XCaption"),
                         P("Données image absentes.", "XSmall")
-                    ]))
+                    ])
 
             photo_rows = []
             for i in range(0, len(photo_cells), 2):
@@ -1651,7 +1658,9 @@ elif page == "Rapport PDF":
                 photo_rows,
                 colWidths=[8.15*cm, 8.15*cm],
                 hAlign="CENTER",
-                repeatRows=0
+                repeatRows=0,
+                splitByRow=1,
+                splitInRow=1
             )
             photo_table.setStyle(TableStyle([
                 ("VALIGN", (0,0), (-1,-1), "TOP"),
@@ -1660,8 +1669,6 @@ elif page == "Rapport PDF":
                 ("RIGHTPADDING", (0,0), (-1,-1), 3),
                 ("TOPPADDING", (0,0), (-1,-1), 5),
                 ("BOTTOMPADDING", (0,0), (-1,-1), 8),
-                ("LINEBELOW", (0,0), (-1,-1), 0, colors.white),
-                ("BOX", (0,0), (-1,-1), 0, colors.white),
             ]))
             story += [photo_table, Spacer(1, 0.2*cm)]
 
