@@ -62,7 +62,7 @@ from reportlab.lib.units import cm
 from reportlab.lib.utils import ImageReader
 from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle,
-    PageBreak, Image as RLImage, KeepTogether
+    PageBreak, Image as RLImage, KeepTogether, Flowable
 )
 
 # ============================================================
