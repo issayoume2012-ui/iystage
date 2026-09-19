@@ -1391,46 +1391,41 @@ elif page == "Rapport PDF":
             photo_rows = []
             current = []
             for ph in photos:
-                path = PHOTO_DIR / f"pdf_tmp_{ph['id']}.png"
+                # Fichier temporaire réel : ReportLab lit l'image pendant doc.build().
+                path = PHOTO_DIR / f"pdf_tmp_{ph['id']}.jpg"
                 caption = ph.get("caption") or ph.get("filename") or "Photo"
                 try:
                     raw = bytes(ph["data"])
                     source = io.BytesIO(raw)
                     with Image.open(source) as pil_img:
                         pil_img.load()
-                        # Corrige l'orientation EXIF des photos prises au téléphone.
                         try:
                             from PIL import ImageOps
                             pil_img = ImageOps.exif_transpose(pil_img)
                         except Exception:
                             pass
-
-                        # Convertit toute image (JPEG/PNG/WEBP/HEIC compatible Pillow)
-                        # en RGB pour obtenir un format PDF fiable.
-                        if pil_img.mode == "RGBA":
-                            bg = Image.new("RGB", pil_img.size, "white")
-                            bg.paste(pil_img, mask=pil_img.getchannel("A"))
+                        if pil_img.mode in ("RGBA", "LA") or "transparency" in pil_img.info:
+                            rgba = pil_img.convert("RGBA")
+                            bg = Image.new("RGB", rgba.size, "white")
+                            bg.paste(rgba, mask=rgba.getchannel("A"))
                             pil_img = bg
                         elif pil_img.mode != "RGB":
                             pil_img = pil_img.convert("RGB")
+                        pil_img.save(path, format="JPEG", quality=90, optimize=True)
 
-                        png_buf = io.BytesIO()
-                        pil_img.save(png_buf, format="PNG", optimize=True)
-                        png_buf.seek(0)
-
-                    img_reader = ImageReader(png_buf)
                     img = RLImage(
-                        img_reader,
+                        str(path),
                         width=7.8*cm,
                         height=6.2*cm,
                         preserveAspectRatio=True,
                         anchor="c",
+                        lazy=0,
                     )
                     cell = [img, P(caption, "XCaption")]
-                except Exception:
+                except Exception as exc:
                     cell = [
                         P(f"Image non disponible : {caption}", "XSmall"),
-                        P(caption, "XCaption")
+                        P(f"{caption} · {exc}", "XCaption")
                     ]
                 current.append(cell)
                 if len(current) == 2:
@@ -1599,46 +1594,41 @@ elif page == "Rapport PDF":
             photo_rows = []
             current = []
             for ph in photos:
-                path = PHOTO_DIR / f"pdf_month_tmp_{ph['id']}.png"
+                # Fichier temporaire réel : ReportLab lit l'image pendant doc.build().
+                path = PHOTO_DIR / f"pdf_month_tmp_{ph['id']}.jpg"
                 caption = ph.get("caption") or ph.get("filename") or "Photo"
                 try:
                     raw = bytes(ph["data"])
                     source = io.BytesIO(raw)
                     with Image.open(source) as pil_img:
                         pil_img.load()
-                        # Corrige l'orientation EXIF des photos prises au téléphone.
                         try:
                             from PIL import ImageOps
                             pil_img = ImageOps.exif_transpose(pil_img)
                         except Exception:
                             pass
-
-                        # Convertit toute image (JPEG/PNG/WEBP/HEIC compatible Pillow)
-                        # en RGB pour obtenir un format PDF fiable.
-                        if pil_img.mode == "RGBA":
-                            bg = Image.new("RGB", pil_img.size, "white")
-                            bg.paste(pil_img, mask=pil_img.getchannel("A"))
+                        if pil_img.mode in ("RGBA", "LA") or "transparency" in pil_img.info:
+                            rgba = pil_img.convert("RGBA")
+                            bg = Image.new("RGB", rgba.size, "white")
+                            bg.paste(rgba, mask=rgba.getchannel("A"))
                             pil_img = bg
                         elif pil_img.mode != "RGB":
                             pil_img = pil_img.convert("RGB")
+                        pil_img.save(path, format="JPEG", quality=90, optimize=True)
 
-                        png_buf = io.BytesIO()
-                        pil_img.save(png_buf, format="PNG", optimize=True)
-                        png_buf.seek(0)
-
-                    img_reader = ImageReader(png_buf)
                     img = RLImage(
-                        img_reader,
+                        str(path),
                         width=7.8*cm,
                         height=6.2*cm,
                         preserveAspectRatio=True,
                         anchor="c",
+                        lazy=0,
                     )
                     current.append([img, P(caption, "XCaption")])
-                except Exception:
+                except Exception as exc:
                     current.append([
                         P(f"Image non disponible : {caption}", "XSmall"),
-                        P(caption, "XCaption")
+                        P(f"{caption} · {exc}", "XCaption")
                     ])
                 if len(current)==2:
                     photo_rows.append(current); current=[]
@@ -1664,7 +1654,7 @@ elif page == "Rapport PDF":
         doc.build(story, onFirstPage=pdf_footer, onLaterPages=pdf_footer)
 
         for ph in photos:
-            tmp = PHOTO_DIR / f"pdf_tmp_{ph['id']}.png"
+            tmp = PHOTO_DIR / f"pdf_month_tmp_{ph['id']}.jpg"
             try: tmp.unlink()
             except Exception: pass
 
