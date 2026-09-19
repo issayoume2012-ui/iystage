@@ -1326,6 +1326,47 @@ elif page == "Rapport PDF":
         canvas.drawRightString(A4[0]-1.3*cm, .72*cm, f"PAGE {doc.page}")
         canvas.restoreState()
 
+    class RawPhotoFlowable(Flowable):
+        """Affiche directement les octets de la photo dans le PDF, sans fichier temporaire ni tableau."""
+        def __init__(self, raw, max_width=17.2*cm, max_height=22.8*cm):
+            Flowable.__init__(self)
+            self.raw = bytes(raw) if raw is not None else b""
+            self.max_width = max_width
+            self.max_height = max_height
+            self.width = 0
+            self.height = 0
+            self._reader = None
+            self._iw = 1
+            self._ih = 1
+            try:
+                from PIL import Image as PILImage
+                self._pil = PILImage.open(io.BytesIO(self.raw))
+                self._pil.load()
+                self._iw, self._ih = self._pil.size
+                self._pil = None
+            except Exception:
+                self._pil = None
+
+        def wrap(self, availWidth, availHeight):
+            if not self.raw or self._iw <= 0 or self._ih <= 0:
+                self.width, self.height = 0, 0
+                return 0, 0
+            w = min(self.max_width, availWidth)
+            h = w * self._ih / self._iw
+            if h > self.max_height:
+                h = self.max_height
+                w = h * self._iw / self._ih
+            self.width, self.height = w, h
+            return self.width, self.height
+
+        def draw(self):
+            if not self.raw:
+                return
+            from reportlab.lib.utils import ImageReader
+            reader = ImageReader(io.BytesIO(self.raw))
+            x = (self.max_width - self.width) / 2 if self.max_width > self.width else 0
+            self.canv.drawImage(reader, x, 0, width=self.width, height=self.height, preserveAspectRatio=True, mask='auto', anchor='c')
+
     def make_daily_pdf(log_id):
         rlist = db_exec("SELECT * FROM daily_logs WHERE id=?", (log_id,), fetch=True)
         if not rlist:
@@ -1386,50 +1427,26 @@ elif page == "Rapport PDF":
         for title, text in sections:
             story += [P(title,"XH1"), P(text or "Non renseigné.")]
 
-        temp_files=[]
         if photos:
             story += [PageBreak(), P("15. Photographies et observations visuelles", "XH1")]
             story.append(P(
-                "Les photographies ci-dessous sont présentées directement dans le rapport, "
-                "sans cadre, sans tableau et sans cellule graphique.",
+                "Photographies originales du stage — affichage direct, sans cadre, sans tableau et sans cellule.",
                 "XSmall"
             ))
             for index, ph in enumerate(photos, 1):
                 caption = ph.get("caption") or ph.get("filename") or f"Photo {index}"
-                path = PHOTO_DIR / f"pdf_daily_{log_id}_{ph['id']}.jpg"
-                try:
-                    with Image.open(io.BytesIO(bytes(ph["data"]))) as source_img:
-                        source_img.load()
-                        try:
-                            from PIL import ImageOps
-                            pil_img = ImageOps.exif_transpose(source_img)
-                        except Exception:
-                            pil_img = source_img.copy()
-                        if pil_img.mode == "RGBA":
-                            bg = Image.new("RGB", pil_img.size, "white")
-                            bg.paste(pil_img, mask=pil_img.getchannel("A"))
-                            pil_img = bg
-                        elif pil_img.mode != "RGB":
-                            pil_img = pil_img.convert("RGB")
-                        pil_img.save(path, format="JPEG", quality=95, optimize=True)
-                    temp_files.append(path)
-
-                    img = RLImage(str(path), width=17.2*cm, height=22.5*cm,
-                                  preserveAspectRatio=True, anchor="c")
+                raw = ph.get("data")
+                if raw:
                     story.extend([
-                        Spacer(1, 0.25*cm),
                         P(f"Photographie {index}", "XH2"),
-                        img,
-                        Spacer(1, 0.15*cm),
+                        Spacer(1, 0.12*cm),
+                        RawPhotoFlowable(raw),
+                        Spacer(1, 0.12*cm),
                         P(caption, "XCaption"),
-                        Spacer(1, 0.45*cm),
+                        Spacer(1, 0.55*cm),
                     ])
-                except Exception:
-                    story.extend([
-                        P(f"Photographie {index}", "XH2"),
-                        P(f"Image non disponible : {caption}", "XSmall"),
-                        Spacer(1, 0.3*cm),
-                    ])
+                else:
+                    story.extend([P(f"Photographie {index}", "XH2"), P("Données image absentes.", "XSmall")])
 
         story += [
             Spacer(1, 12),
@@ -1574,50 +1591,26 @@ elif page == "Rapport PDF":
             at.setStyle(TableStyle([("GRID",(0,0),(-1,-1),.45,colors.HexColor("#777777")),("BACKGROUND",(0,0),(-1,0),colors.white),("VALIGN",(0,0),(-1,-1),"TOP")]))
             story.append(at)
 
-        temp_files=[]
         if photos:
             story += [PageBreak(), P("16. Photographies du mois", "XH1")]
             story.append(P(
-                "Les photographies sont présentées directement, une par une, "
-                "sans cadre, sans tableau et sans cellule graphique.",
+                "Photographies originales du stage — affichage direct, sans cadre, sans tableau et sans cellule.",
                 "XSmall"
             ))
             for index, ph in enumerate(photos, 1):
                 caption = ph.get("caption") or ph.get("filename") or f"Photo {index}"
-                path = PHOTO_DIR / f"pdf_month_{month}_{ph['id']}.jpg"
-                try:
-                    with Image.open(io.BytesIO(bytes(ph["data"]))) as source_img:
-                        source_img.load()
-                        try:
-                            from PIL import ImageOps
-                            pil_img = ImageOps.exif_transpose(source_img)
-                        except Exception:
-                            pil_img = source_img.copy()
-                        if pil_img.mode == "RGBA":
-                            bg = Image.new("RGB", pil_img.size, "white")
-                            bg.paste(pil_img, mask=pil_img.getchannel("A"))
-                            pil_img = bg
-                        elif pil_img.mode != "RGB":
-                            pil_img = pil_img.convert("RGB")
-                        pil_img.save(path, format="JPEG", quality=95, optimize=True)
-                    temp_files.append(path)
-
-                    img = RLImage(str(path), width=17.2*cm, height=22.5*cm,
-                                  preserveAspectRatio=True, anchor="c")
+                raw = ph.get("data")
+                if raw:
                     story.extend([
-                        Spacer(1, 0.25*cm),
                         P(f"Photographie {index}", "XH2"),
-                        img,
-                        Spacer(1, 0.15*cm),
+                        Spacer(1, 0.12*cm),
+                        RawPhotoFlowable(raw),
+                        Spacer(1, 0.12*cm),
                         P(caption, "XCaption"),
-                        Spacer(1, 0.45*cm),
+                        Spacer(1, 0.55*cm),
                     ])
-                except Exception:
-                    story.extend([
-                        P(f"Photographie {index}", "XH2"),
-                        P(f"Image non disponible : {caption}", "XSmall"),
-                        Spacer(1, 0.3*cm),
-                    ])
+                else:
+                    story.extend([P(f"Photographie {index}", "XH2"), P("Données image absentes.", "XSmall")])
 
         story += [
             P("17. Conclusion générale", "XH1"),
