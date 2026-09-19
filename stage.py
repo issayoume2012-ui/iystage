@@ -1455,10 +1455,9 @@ elif page == "Rapport PDF":
         ]
         doc.build(story, onFirstPage=pdf_footer, onLaterPages=pdf_footer)
 
-        pdf_bytes=buf.getvalue()
-        for tmp in temp_files:
-            try: tmp.unlink(missing_ok=True)
-            except Exception: pass
+        pdf_bytes = buf.getvalue()
+        # Les photos sont désormais injectées directement dans le PDF via
+        # RawPhotoFlowable : aucun fichier temporaire n'est créé ici.
         return pdf_bytes
 
     def make_monthly_pdf(month):
