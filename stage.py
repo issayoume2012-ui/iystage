@@ -639,7 +639,10 @@ def get_pool():
         )
     return ConnectionPool(
         conninfo=None,
-        kwargs=cfg,
+        kwargs={
+            **cfg,
+            "row_factory": dict_row,
+        },
         min_size=1,
         max_size=4,
         timeout=10,
@@ -729,10 +732,21 @@ def init_db():
         "monthly_logs": {"introduction": "TEXT", "conclusion": "TEXT", "planning_review": "TEXT", "professional_behavior": "TEXT", "critical_analysis": "TEXT"},
     }
     for table, cols in migrations.items():
-        existing = {r["column_name"] for r in db_exec(
-            "SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name=%s",
-            (table,), fetch=True
-        )}
+        rows = db_exec(
+            """
+            SELECT column_name
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = %s
+            """,
+            (table,),
+            fetch=True,
+        )
+
+        existing = {
+            row["column_name"] if isinstance(row, dict) else row[0]
+            for row in rows
+        }
         for col, typ in cols.items():
             if col not in existing:
                 db_exec(f'ALTER TABLE "{table}" ADD COLUMN "{col}" {typ}')
@@ -1126,7 +1140,7 @@ elif page == "Journal quotidien":
 
 elif page == "Photos":
     st.markdown('<div class="section-title">📷 Photos du stage</div>', unsafe_allow_html=True)
-    st.markdown('<div class="section-subtitle">Les photos sont enregistrées dans la base SQLite et peuvent être intégrées aux rapports PDF.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-subtitle">Les photos sont enregistrées dans PostgreSQL / Supabase et peuvent être intégrées aux rapports PDF.</div>', unsafe_allow_html=True)
 
     logs = db_exec("SELECT * FROM daily_logs ORDER BY log_date DESC", fetch=True)
     if not logs:
