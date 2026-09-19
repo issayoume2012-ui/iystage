@@ -59,6 +59,7 @@ from reportlab.lib.enums import TA_CENTER
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import cm
+from reportlab.lib.utils import ImageReader
 from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle,
     PageBreak, Image as RLImage, KeepTogether
@@ -1393,14 +1394,15 @@ elif page == "Rapport PDF":
                 path = PHOTO_DIR / f"pdf_tmp_{ph['id']}.png"
                 caption = ph.get("caption") or ph.get("filename") or "Photo"
                 try:
-                    # Normalise toutes les images en PNG avant insertion PDF.
                     raw = bytes(ph["data"])
                     with Image.open(io.BytesIO(raw)) as pil_img:
                         if pil_img.mode not in ("RGB", "RGBA"):
                             pil_img = pil_img.convert("RGB")
-                        pil_img.save(path, format="PNG")
+                        png_buf = io.BytesIO()
+                        pil_img.save(png_buf, format="PNG")
+                        png_buf.seek(0)
                     img = RLImage(
-                        str(path),
+                        ImageReader(png_buf),
                         width=7.8*cm,
                         height=6.2*cm,
                         preserveAspectRatio=True,
@@ -1458,10 +1460,11 @@ elif page == "Rapport PDF":
         m = dict(monthly_rows[0]) if monthly_rows else {}
         photos = db_exec("""
             SELECT p.* FROM photos p
-            JOIN daily_logs d ON d.id=p.log_id
+            LEFT JOIN daily_logs d ON d.id=p.log_id
             WHERE substr(d.log_date,1,7)=?
+               OR substr(p.photo_date,1,7)=?
             ORDER BY p.id
-        """, (month,), fetch=True)
+        """, (month, month), fetch=True)
 
         buf = io.BytesIO()
         doc = SimpleDocTemplate(buf, pagesize=A4, rightMargin=1.2*cm, leftMargin=1.2*cm, topMargin=1.2*cm, bottomMargin=1.4*cm)
@@ -1581,16 +1584,15 @@ elif page == "Rapport PDF":
                 path = PHOTO_DIR / f"pdf_month_tmp_{ph['id']}.png"
                 caption = ph.get("caption") or ph.get("filename") or "Photo"
                 try:
-                    # Normalise le fichier original (JPG/PNG/WEBP/etc.) en PNG.
-                    # Cela évite que ReportLab ignore certaines images pourtant
-                    # correctement enregistrées dans PostgreSQL.
                     raw = bytes(ph["data"])
                     with Image.open(io.BytesIO(raw)) as pil_img:
                         if pil_img.mode not in ("RGB", "RGBA"):
                             pil_img = pil_img.convert("RGB")
-                        pil_img.save(path, format="PNG")
+                        png_buf = io.BytesIO()
+                        pil_img.save(png_buf, format="PNG")
+                        png_buf.seek(0)
                     img = RLImage(
-                        str(path),
+                        ImageReader(png_buf),
                         width=7.8*cm,
                         height=6.2*cm,
                         preserveAspectRatio=True,
@@ -1626,7 +1628,7 @@ elif page == "Rapport PDF":
         doc.build(story, onFirstPage=pdf_footer, onLaterPages=pdf_footer)
 
         for ph in photos:
-            tmp = PHOTO_DIR / f"pdf_month_tmp_{ph['id']}.png"
+            tmp = PHOTO_DIR / f"pdf_tmp_{ph['id']}.png"
             try: tmp.unlink()
             except Exception: pass
 
@@ -1663,6 +1665,15 @@ elif page == "Rapport PDF":
     monthly_exists = bool(db_exec("SELECT id FROM monthly_logs WHERE month=?", (month,), fetch=True))
     if not monthly_exists:
         st.warning("Le texte personnalisé de ce mois n'est pas encore enregistré. Le PDF utilisera des textes par défaut pour les parties manquantes.")
+
+    monthly_photo_count = len(db_exec("""
+        SELECT p.id
+        FROM photos p
+        LEFT JOIN daily_logs d ON d.id=p.log_id
+        WHERE substr(d.log_date,1,7)=?
+           OR substr(p.photo_date,1,7)=?
+    """, (month, month), fetch=True))
+    st.info(f"📷 {monthly_photo_count} photo(s) trouvée(s) pour {month_label(month)} et intégrées au PDF.")
 
     monthly_pdf = make_monthly_pdf(month)
     st.download_button(
