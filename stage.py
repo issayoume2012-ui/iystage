@@ -1387,62 +1387,35 @@ elif page == "Rapport PDF":
             story += [P(title,"XH1"), P(text or "Non renseigné.")]
 
         if photos:
-            story += [PageBreak(), P("15. Photographies et observations visuelles","XH1")]
-            photo_rows = []
-            current = []
+            story += [PageBreak(), P("15. Photographies et observations visuelles", "XH1")]
+            photo_rows=[]; current=[]; temp_files=[]
             for ph in photos:
-                # Fichier temporaire réel : ReportLab lit l'image pendant doc.build().
-                path = PHOTO_DIR / f"pdf_tmp_{ph['id']}.jpg"
-                caption = ph.get("caption") or ph.get("filename") or "Photo"
+                caption=ph.get("caption") or ph.get("filename") or "Photo"
+                path=PHOTO_DIR / f"pdf_daily_{log_id}_{ph['id']}.jpg"
                 try:
-                    raw = bytes(ph["data"])
-                    source = io.BytesIO(raw)
-                    with Image.open(source) as pil_img:
-                        pil_img.load()
+                    with Image.open(io.BytesIO(bytes(ph["data"]))) as source_img:
+                        source_img.load()
                         try:
                             from PIL import ImageOps
-                            pil_img = ImageOps.exif_transpose(pil_img)
+                            pil_img=ImageOps.exif_transpose(source_img)
                         except Exception:
-                            pass
-                        if pil_img.mode in ("RGBA", "LA") or "transparency" in pil_img.info:
-                            rgba = pil_img.convert("RGBA")
-                            bg = Image.new("RGB", rgba.size, "white")
-                            bg.paste(rgba, mask=rgba.getchannel("A"))
-                            pil_img = bg
+                            pil_img=source_img.copy()
+                        if pil_img.mode == "RGBA":
+                            bg=Image.new("RGB",pil_img.size,"white"); bg.paste(pil_img,mask=pil_img.getchannel("A")); pil_img=bg
                         elif pil_img.mode != "RGB":
-                            pil_img = pil_img.convert("RGB")
-                        pil_img.save(path, format="JPEG", quality=90, optimize=True)
-
-                    img = RLImage(
-                        str(path),
-                        width=7.8*cm,
-                        height=6.2*cm,
-                        preserveAspectRatio=True,
-                        anchor="c",
-                        lazy=0,
-                    )
-                    cell = [img, P(caption, "XCaption")]
-                except Exception as exc:
-                    cell = [
-                        P(f"Image non disponible : {caption}", "XSmall"),
-                        P(f"{caption} · {exc}", "XCaption")
-                    ]
-                current.append(cell)
-                if len(current) == 2:
-                    photo_rows.append(current)
-                    current = []
-            if current:
-                current.append("")
-                photo_rows.append(current)
-
-            pt = Table(photo_rows, colWidths=[8.2*cm,8.2*cm])
-            pt.setStyle(TableStyle([
-                ("GRID",(0,0),(-1,-1),.45,colors.HexColor("#777777")),
-                ("VALIGN",(0,0),(-1,-1),"TOP"),
-                ("LEFTPADDING",(0,0),(-1,-1),6),("RIGHTPADDING",(0,0),(-1,-1),6),
-                ("TOPPADDING",(0,0),(-1,-1),6),("BOTTOMPADDING",(0,0),(-1,-1),6),
-            ]))
+                            pil_img=pil_img.convert("RGB")
+                        pil_img.save(path,format="JPEG",quality=92,optimize=True)
+                    temp_files.append(path)
+                    current.append([RLImage(str(path),width=7.8*cm,height=6.2*cm,preserveAspectRatio=True,anchor="c"),P(caption,"XCaption")])
+                except Exception:
+                    current.append([P(f"Image non disponible : {caption}","XSmall"),P(caption,"XCaption")])
+                if len(current)==2: photo_rows.append(current); current=[]
+            if current: current.append(""); photo_rows.append(current)
+            pt=Table(photo_rows,colWidths=[8.2*cm,8.2*cm])
+            pt.setStyle(TableStyle([("GRID",(0,0),(-1,-1),.45,colors.HexColor("#777777")),("VALIGN",(0,0),(-1,-1),"TOP"),("LEFTPADDING",(0,0),(-1,-1),6),("RIGHTPADDING",(0,0),(-1,-1),6),("TOPPADDING",(0,0),(-1,-1),6),("BOTTOMPADDING",(0,0),(-1,-1),6)]))
             story.append(pt)
+        else:
+            temp_files=[]
 
         story += [
             Spacer(1, 12),
@@ -1451,13 +1424,11 @@ elif page == "Rapport PDF":
         ]
         doc.build(story, onFirstPage=pdf_footer, onLaterPages=pdf_footer)
 
-        for ph in photos:
-            tmp = PHOTO_DIR / f"pdf_tmp_{ph['id']}.png"
-            try:
-                tmp.unlink()
-            except Exception:
-                pass
-        return buf.getvalue()
+        pdf_bytes=buf.getvalue()
+        for tmp in temp_files:
+            try: tmp.unlink(missing_ok=True)
+            except Exception: pass
+        return pdf_bytes
 
     def make_monthly_pdf(month):
         logs = [dict(r) for r in db_exec(
@@ -1591,52 +1562,34 @@ elif page == "Rapport PDF":
 
         if photos:
             story += [PageBreak(), P("16. Photographies du mois", "XH1")]
-            photo_rows = []
-            current = []
+            photo_rows=[]; current=[]; temp_files=[]
             for ph in photos:
-                # Fichier temporaire réel : ReportLab lit l'image pendant doc.build().
-                path = PHOTO_DIR / f"pdf_month_tmp_{ph['id']}.jpg"
-                caption = ph.get("caption") or ph.get("filename") or "Photo"
+                caption=ph.get("caption") or ph.get("filename") or "Photo"
+                path=PHOTO_DIR / f"pdf_month_{month}_{ph['id']}.jpg"
                 try:
-                    raw = bytes(ph["data"])
-                    source = io.BytesIO(raw)
-                    with Image.open(source) as pil_img:
-                        pil_img.load()
+                    with Image.open(io.BytesIO(bytes(ph["data"]))) as source_img:
+                        source_img.load()
                         try:
                             from PIL import ImageOps
-                            pil_img = ImageOps.exif_transpose(pil_img)
+                            pil_img=ImageOps.exif_transpose(source_img)
                         except Exception:
-                            pass
-                        if pil_img.mode in ("RGBA", "LA") or "transparency" in pil_img.info:
-                            rgba = pil_img.convert("RGBA")
-                            bg = Image.new("RGB", rgba.size, "white")
-                            bg.paste(rgba, mask=rgba.getchannel("A"))
-                            pil_img = bg
+                            pil_img=source_img.copy()
+                        if pil_img.mode == "RGBA":
+                            bg=Image.new("RGB",pil_img.size,"white"); bg.paste(pil_img,mask=pil_img.getchannel("A")); pil_img=bg
                         elif pil_img.mode != "RGB":
-                            pil_img = pil_img.convert("RGB")
-                        pil_img.save(path, format="JPEG", quality=90, optimize=True)
-
-                    img = RLImage(
-                        str(path),
-                        width=7.8*cm,
-                        height=6.2*cm,
-                        preserveAspectRatio=True,
-                        anchor="c",
-                        lazy=0,
-                    )
-                    current.append([img, P(caption, "XCaption")])
-                except Exception as exc:
-                    current.append([
-                        P(f"Image non disponible : {caption}", "XSmall"),
-                        P(f"{caption} · {exc}", "XCaption")
-                    ])
-                if len(current)==2:
-                    photo_rows.append(current); current=[]
-            if current:
-                current.append(""); photo_rows.append(current)
-            pt = Table(photo_rows, colWidths=[8.2*cm,8.2*cm])
-            pt.setStyle(TableStyle([("GRID",(0,0),(-1,-1),.45,colors.HexColor("#777777")),("VALIGN",(0,0),(-1,-1),"TOP"),("LEFTPADDING",(0,0),(-1,-1),5),("TOPPADDING",(0,0),(-1,-1),5)]))
+                            pil_img=pil_img.convert("RGB")
+                        pil_img.save(path,format="JPEG",quality=92,optimize=True)
+                    temp_files.append(path)
+                    current.append([RLImage(str(path),width=7.8*cm,height=6.2*cm,preserveAspectRatio=True,anchor="c"),P(caption,"XCaption")])
+                except Exception:
+                    current.append([P(f"Image non disponible : {caption}","XSmall"),P(caption,"XCaption")])
+                if len(current)==2: photo_rows.append(current); current=[]
+            if current: current.append(""); photo_rows.append(current)
+            pt=Table(photo_rows,colWidths=[8.2*cm,8.2*cm])
+            pt.setStyle(TableStyle([("GRID",(0,0),(-1,-1),.45,colors.HexColor("#777777")),("VALIGN",(0,0),(-1,-1),"TOP"),("LEFTPADDING",(0,0),(-1,-1),5),("RIGHTPADDING",(0,0),(-1,-1),5),("TOPPADDING",(0,0),(-1,-1),5),("BOTTOMPADDING",(0,0),(-1,-1),5)]))
             story.append(pt)
+        else:
+            temp_files=[]
 
         story += [
             P("17. Conclusion générale", "XH1"),
@@ -1654,7 +1607,7 @@ elif page == "Rapport PDF":
         doc.build(story, onFirstPage=pdf_footer, onLaterPages=pdf_footer)
 
         for ph in photos:
-            tmp = PHOTO_DIR / f"pdf_month_tmp_{ph['id']}.jpg"
+            tmp = PHOTO_DIR / f"pdf_tmp_{ph['id']}.png"
             try: tmp.unlink()
             except Exception: pass
 
