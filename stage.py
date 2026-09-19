@@ -1395,14 +1395,32 @@ elif page == "Rapport PDF":
                 caption = ph.get("caption") or ph.get("filename") or "Photo"
                 try:
                     raw = bytes(ph["data"])
-                    with Image.open(io.BytesIO(raw)) as pil_img:
-                        if pil_img.mode not in ("RGB", "RGBA"):
+                    source = io.BytesIO(raw)
+                    with Image.open(source) as pil_img:
+                        pil_img.load()
+                        # Corrige l'orientation EXIF des photos prises au téléphone.
+                        try:
+                            from PIL import ImageOps
+                            pil_img = ImageOps.exif_transpose(pil_img)
+                        except Exception:
+                            pass
+
+                        # Convertit toute image (JPEG/PNG/WEBP/HEIC compatible Pillow)
+                        # en RGB pour obtenir un format PDF fiable.
+                        if pil_img.mode == "RGBA":
+                            bg = Image.new("RGB", pil_img.size, "white")
+                            bg.paste(pil_img, mask=pil_img.getchannel("A"))
+                            pil_img = bg
+                        elif pil_img.mode != "RGB":
                             pil_img = pil_img.convert("RGB")
+
                         png_buf = io.BytesIO()
-                        pil_img.save(png_buf, format="PNG")
+                        pil_img.save(png_buf, format="PNG", optimize=True)
                         png_buf.seek(0)
+
+                    img_reader = ImageReader(png_buf)
                     img = RLImage(
-                        ImageReader(png_buf),
+                        img_reader,
                         width=7.8*cm,
                         height=6.2*cm,
                         preserveAspectRatio=True,
@@ -1585,14 +1603,32 @@ elif page == "Rapport PDF":
                 caption = ph.get("caption") or ph.get("filename") or "Photo"
                 try:
                     raw = bytes(ph["data"])
-                    with Image.open(io.BytesIO(raw)) as pil_img:
-                        if pil_img.mode not in ("RGB", "RGBA"):
+                    source = io.BytesIO(raw)
+                    with Image.open(source) as pil_img:
+                        pil_img.load()
+                        # Corrige l'orientation EXIF des photos prises au téléphone.
+                        try:
+                            from PIL import ImageOps
+                            pil_img = ImageOps.exif_transpose(pil_img)
+                        except Exception:
+                            pass
+
+                        # Convertit toute image (JPEG/PNG/WEBP/HEIC compatible Pillow)
+                        # en RGB pour obtenir un format PDF fiable.
+                        if pil_img.mode == "RGBA":
+                            bg = Image.new("RGB", pil_img.size, "white")
+                            bg.paste(pil_img, mask=pil_img.getchannel("A"))
+                            pil_img = bg
+                        elif pil_img.mode != "RGB":
                             pil_img = pil_img.convert("RGB")
+
                         png_buf = io.BytesIO()
-                        pil_img.save(png_buf, format="PNG")
+                        pil_img.save(png_buf, format="PNG", optimize=True)
                         png_buf.seek(0)
+
+                    img_reader = ImageReader(png_buf)
                     img = RLImage(
-                        ImageReader(png_buf),
+                        img_reader,
                         width=7.8*cm,
                         height=6.2*cm,
                         preserveAspectRatio=True,
