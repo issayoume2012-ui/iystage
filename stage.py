@@ -1394,8 +1394,22 @@ elif page == "Rapport PDF":
                 path.write_bytes(ph["data"])
                 try:
                     # Photos XXL : largeur quasi pleine page.
-                    img = RLImage(str(path), width=7.8*cm, height=6.2*cm, preserveAspectRatio=True, anchor="c")
-                    cell = [img, P(ph["caption"] or ph["filename"], "XCaption")]
+                    try:
+                        img = RLImage(
+                            str(path),
+                            width=7.8*cm,
+                            height=6.2*cm,
+                            preserveAspectRatio=True,
+                            anchor="c",
+                        )
+                        caption = ph.get("caption") or ph.get("filename") or "Photo"
+                        cell = [img, P(caption, "XCaption")]
+                    except Exception:
+                        caption = ph.get("caption") or ph.get("filename") or "Photo non lisible"
+                        cell = [
+                            P(f"Image non disponible : {caption}", "XSmall"),
+                            P(caption, "XCaption")
+                        ]
                 except Exception:
                     cell = [P(ph["filename"], "XSmall")]
                 current.append(cell)
@@ -1566,7 +1580,23 @@ elif page == "Rapport PDF":
             for ph in photos:
                 path = PHOTO_DIR / f"pdf_month_tmp_{ph['id']}.jpg"
                 path.write_bytes(ph["data"])
-                current.append([RLImage(str(path), width=7.8*cm, height=6.2*cm, preserveAspectRatio=True, anchor="c"), P(ph["caption"] or ph["filename"],"XCaption")])
+                # Une image invalide/non supportée ne doit pas bloquer tout le PDF.
+                try:
+                    img = RLImage(
+                        str(path),
+                        width=7.8*cm,
+                        height=6.2*cm,
+                        preserveAspectRatio=True,
+                        anchor="c",
+                    )
+                    caption = ph.get("caption") or ph.get("filename") or "Photo"
+                    current.append([img, P(caption, "XCaption")])
+                except Exception:
+                    caption = ph.get("caption") or ph.get("filename") or "Photo non lisible"
+                    current.append([
+                        P(f"Image non disponible : {caption}", "XSmall"),
+                        P(caption, "XCaption")
+                    ])
                 if len(current)==2:
                     photo_rows.append(current); current=[]
             if current:
