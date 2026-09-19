@@ -47,6 +47,7 @@ from typing import Optional, Dict, Any, List
 
 import psycopg
 from psycopg.rows import dict_row
+from psycopg_pool import ConnectionPool
 
 import pandas as pd
 import streamlit as st
@@ -623,29 +624,40 @@ def _pg_settings():
         "user": cfg.get("user", "postgres.ctywepszhxkurvdmoyiy"),
         "password": cfg.get("password", ""),
         "sslmode": cfg.get("sslmode", "require"),
-        "connect_timeout": int(cfg.get("connect_timeout", 10)),
+        "connect_timeout": int(cfg.get("connect_timeout", 5)),
         "prepare_threshold": None,
     }
 
 
-def get_conn():
+@st.cache_resource(show_spinner=False)
+def get_pool():
+    """Pool PostgreSQL partagé afin d'éviter une connexion réseau à chaque requête."""
     cfg = _pg_settings()
     if not cfg["password"]:
         raise RuntimeError(
             "Mot de passe PostgreSQL absent. Ajoute [postgres].password dans les secrets Streamlit."
         )
-    return psycopg.connect(**cfg, row_factory=dict_row)
+    return ConnectionPool(
+        conninfo=None,
+        kwargs=cfg,
+        min_size=1,
+        max_size=4,
+        timeout=10,
+        open=True,
+    )
+
+
+def get_conn():
+    return get_pool().getconn()
 
 
 def _pg_sql(sql: str) -> str:
-    # Le code historique utilisait les placeholders SQLite '?'.
-    # PostgreSQL/psycopg attend '%s'.
     return sql.replace("?", "%s")
 
 
 def db_exec(sql: str, params=(), fetch=False, many=False):
-    conn = get_conn()
-    try:
+    """Requête PostgreSQL via le pool de connexions réutilisables."""
+    with get_pool().connection() as conn:
         with conn.cursor() as cur:
             sql = _pg_sql(sql)
             if many:
@@ -655,13 +667,9 @@ def db_exec(sql: str, params=(), fetch=False, many=False):
             rows = cur.fetchall() if fetch else None
         conn.commit()
         return rows
-    except Exception:
-        conn.rollback()
-        raise
-    finally:
-        conn.close()
 
 
+@st.cache_resource(show_spinner=False)
 def init_db():
     statements = [
         """CREATE TABLE IF NOT EXISTS profile (
@@ -808,6 +816,7 @@ def rows_to_df(rows):
     return pd.DataFrame([dict(r) for r in rows]) if rows else pd.DataFrame()
 
 
+@st.cache_data(ttl=30, show_spinner=False)
 def profile():
     rows = db_exec("SELECT * FROM profile WHERE id=1", fetch=True)
     return dict(rows[0]) if rows else {}
@@ -877,6 +886,10 @@ selected_page = st.radio(
 st.session_state.page = selected_page
 page = selected_page
 
+@st.cache_data(ttl=60, show_spinner=False)
+def get_protocols():
+    return db_exec("SELECT * FROM protocols ORDER BY category,title", fetch=True)
+
 # ============================================================
 # TABLEAU DE BORD
 # ============================================================
@@ -888,7 +901,8 @@ if page == "Tableau de bord":
     logs = db_exec("SELECT * FROM daily_logs ORDER BY log_date DESC, id DESC", fetch=True)
     analyses = db_exec("SELECT * FROM analyses", fetch=True)
     samples = db_exec("SELECT * FROM samples", fetch=True)
-    photos = db_exec("SELECT * FROM photos", fetch=True)
+    photo_count_row = db_exec("SELECT COUNT(*) AS n FROM photos", fetch=True)
+    photo_count = int(photo_count_row[0]["n"]) if photo_count_row else 0
     skills = db_exec("SELECT * FROM skills", fetch=True)
 
     hours = sum(float(r["hours"] or 0) for r in logs)
@@ -905,7 +919,7 @@ if page == "Tableau de bord":
     c2.metric("⏱️ Heures", f"{hours:.1f}")
     c3.metric("🧪 Analyses", len(analyses))
     c4.metric("🧫 Échantillons", len(samples))
-    c5.metric("📷 Photos", len(photos))
+    c5.metric("📷 Photos", photo_count)
 
     c6,c7,c8 = st.columns(3)
     c6.metric("📋 Tâches ouvertes", open_tasks)
@@ -1960,7 +1974,7 @@ elif page == "Suivi & outils":
     with tabs[2]:
         st.markdown("### 🧪 Bibliothèque de protocoles et fiches techniques")
         st.warning("Les fiches intégrées sont pédagogiques. Elles ne remplacent pas les procédures officielles du laboratoire ni les instructions de l'encadreur.")
-        protocols = db_exec("SELECT * FROM protocols ORDER BY category,title", fetch=True)
+        protocols = get_protocols()
         for pr in protocols:
             with st.expander(f"🧪 {pr['title']} — {pr['category']}"):
                 st.markdown(f"**Objectif**  \n{pr['objective'] or '—'}")
@@ -2027,16 +2041,7 @@ elif page == "Exports":
             health.append({"Table": table, "Enregistrements": f"Erreur: {exc}"})
     st.dataframe(pd.DataFrame(health), use_container_width=True, hide_index=True)
 
-    if DB_PATH.exists():
-        st.markdown("### 💾 Sauvegarde complète")
-        with open(DB_PATH,"rb") as f:
-            st.download_button(
-                "⬇️ Télécharger la base SQLite complète",
-                f.read(),
-                file_name="stage_pedologie_backup.db",
-                mime="application/octet-stream",
-                use_container_width=True
-            )
+    st.info("💡 La base de production est PostgreSQL/Supabase. Les sauvegardes se font côté Supabase.")
 
 # ============================================================
 # AUDIT
@@ -2045,7 +2050,7 @@ elif page == "Exports":
 elif page == "Audit":
     st.markdown("<div class='section-title'>🔐 Journal d'audit</div>",unsafe_allow_html=True)
     st.info("Cette rubrique est visible uniquement après authentification.")
-    rows=db_exec("SELECT * FROM audit ORDER BY id DESC",fetch=True)
+    rows=db_exec("SELECT * FROM audit ORDER BY id DESC LIMIT 5000",fetch=True)
     if rows:
         st.dataframe(rows_to_df(rows),use_container_width=True,hide_index=True)
         df=rows_to_df(rows)
