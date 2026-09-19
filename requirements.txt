@@ -1,0 +1,5 @@
+streamlit>=1.38,<2
+pandas>=2.2,<3
+psycopg[binary]>=3.2,<4
+reportlab>=4.2,<5
+Pillow>=10.4,<12
