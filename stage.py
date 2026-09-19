@@ -1484,34 +1484,50 @@ elif page == "Rapport PDF":
         ]
 
         total_hours = sum(float(x.get("hours") or 0) for x in logs)
+        # Priorité au contenu réellement renseigné par l'étudiant.
+        # Introduction mensuelle si renseignée, sinon présentation du profil.
+        # Les objectifs généraux du profil sont toujours repris dans le rapport.
+        profile_intro = (p.get("presentation") or "").strip()
+        profile_objectives = (p.get("objectives") or "").strip()
+        monthly_intro = (m.get("introduction") or "").strip()
+        monthly_objectives = (m.get("objectives_next") or "").strip()
+
+        report_intro = monthly_intro or profile_intro or "Introduction non renseignée."
+
         story += [
             P("1. Introduction", "XH1"),
-            P(m.get("introduction") or
-              f"Le mois de {month_label(month)} s'inscrit dans le cadre de l'immersion de l'étudiant en L2 DSTAAN au sein du laboratoire de pédologie. "
-              "L'objectif est de découvrir les activités scientifiques et techniques liées à l'étude des sols, au traitement des échantillons, "
-              "aux analyses et à l'interprétation des résultats."),
-            P("2. Synthèse générale", "XH1"),
-            P(m.get("summary") or "Synthèse non renseignée."),
-            P("3. Activités réalisées", "XH1"),
-            P(m.get("activities") or "Activités non renseignées."),
-            P("4. Analyses et travaux scientifiques", "XH1"),
-            P(m.get("analyses") or "Travaux non renseignés."),
-            P("5. Travaux de terrain", "XH1"),
-            P(m.get("fieldwork") or "Travaux de terrain non renseignés."),
-            P("6. Compétences acquises", "XH1"),
-            P(m.get("skills") or "Compétences non renseignées."),
-            P("7. Résultats et apports", "XH1"),
-            P(m.get("results") or "Résultats non renseignés."),
-            P("8. Difficultés et solutions", "XH1"),
-            P(m.get("difficulties") or "Difficultés non renseignées."),
-            P(m.get("solutions") or "Solutions non renseignées."),
-            P("9. Bilan personnel", "XH1"),
-            P(m.get("lessons") or "Bilan non renseigné."),
-            P("10. Objectifs du mois suivant", "XH1"),
-            P(m.get("objectives_next") or "Objectifs non renseignés."),
+            P(report_intro),
+            P("2. Objectifs du stage", "XH1"),
+            P(profile_objectives or "Objectifs du stage non renseignés."),
         ]
 
-        story += [P("11. Indicateurs du mois", "XH1")]
+        if monthly_objectives:
+            story += [
+                P("3. Objectifs du mois suivant", "XH1"),
+                P(monthly_objectives),
+            ]
+
+        story += [
+            P("4. Synthèse générale", "XH1"),
+            P(m.get("summary") or "Synthèse non renseignée."),
+            P("5. Activités réalisées", "XH1"),
+            P(m.get("activities") or "Activités non renseignées."),
+            P("6. Analyses et travaux scientifiques", "XH1"),
+            P(m.get("analyses") or "Travaux non renseignés."),
+            P("7. Travaux de terrain", "XH1"),
+            P(m.get("fieldwork") or "Travaux de terrain non renseignés."),
+            P("8. Compétences acquises", "XH1"),
+            P(m.get("skills") or "Compétences non renseignées."),
+            P("9. Résultats et apports", "XH1"),
+            P(m.get("results") or "Résultats non renseignés."),
+            P("10. Difficultés et solutions", "XH1"),
+            P(m.get("difficulties") or "Difficultés non renseignées."),
+            P(m.get("solutions") or "Solutions non renseignées."),
+            P("11. Bilan personnel", "XH1"),
+            P(m.get("lessons") or "Bilan non renseigné."),
+        ]
+
+        story += [P("13. Indicateurs du mois", "XH1")]
         kpi = Table([
             [P("<b>Journées</b>","XSmall"), P("<b>Heures</b>","XSmall"), P("<b>Analyses</b>","XSmall"), P("<b>Échantillons</b>","XSmall"), P("<b>Photos</b>","XSmall")],
             [P(str(len(logs)),"XSmall"), P(f"{total_hours:.1f}","XSmall"), P(str(len(analyses)),"XSmall"), P(str(len(samples)),"XSmall"), P(str(len(photos)),"XSmall")]
@@ -1520,7 +1536,7 @@ elif page == "Rapport PDF":
         story.append(kpi)
 
         if logs:
-            story += [P("12. Chronologie des journées", "XH1")]
+            story += [P("14. Chronologie des journées", "XH1")]
             rows = [[P("<b>Date</b>","XSmall"),P("<b>Activité</b>","XSmall"),P("<b>Heures</b>","XSmall")]]
             for x in logs:
                 rows.append([P(fmt_date(x["log_date"]),"XSmall"),P(x["title"] or "—","XSmall"),P(str(x["hours"] or 0),"XSmall")])
@@ -1529,7 +1545,7 @@ elif page == "Rapport PDF":
             story.append(tt)
 
         if analyses:
-            story += [P("13. Analyses enregistrées", "XH1")]
+            story += [P("15. Analyses enregistrées", "XH1")]
             rows = [[P("<b>Date</b>","XSmall"),P("<b>Échantillon</b>","XSmall"),P("<b>Analyse</b>","XSmall"),P("<b>Résultat</b>","XSmall"),P("<b>Unité</b>","XSmall")]]
             for x in analyses:
                 rows.append([
@@ -1544,7 +1560,7 @@ elif page == "Rapport PDF":
             story.append(at)
 
         if photos:
-            story += [PageBreak(), P("14. Photographies du mois", "XH1")]
+            story += [PageBreak(), P("16. Photographies du mois", "XH1")]
             photo_rows = []
             current = []
             for ph in photos:
@@ -1560,12 +1576,12 @@ elif page == "Rapport PDF":
             story.append(pt)
 
         story += [
-            P("15. Conclusion générale", "XH1"),
+            P("17. Conclusion générale", "XH1"),
             P(m.get("conclusion") or
               "Ce mois d'immersion a permis de consolider les observations et les apprentissages réalisés au laboratoire. "
               "Les activités doivent être replacées dans une démarche de rigueur scientifique, de traçabilité des échantillons, "
               "de respect des procédures et de mise en relation des résultats avec les problématiques agronomiques."),
-            P("16. Observation de l'encadreur", "XH1"),
+            P("18. Observation de l'encadreur", "XH1"),
             P(m.get("supervisor_comment") or "Observation / visa de l'encadreur :"),
             Spacer(1, 10),
             P("Signature de l'étudiant : ________________________________", "XBody"),
