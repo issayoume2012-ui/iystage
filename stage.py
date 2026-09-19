@@ -1261,41 +1261,41 @@ elif page == "Rapport PDF":
 
     styles.add(ParagraphStyle(
         name="XTitle", parent=styles["Title"], fontName="Helvetica-Bold",
-        fontSize=22, leading=26, alignment=TA_CENTER, textColor=GREEN_900,
-        spaceAfter=7
+        fontSize=19, leading=21, alignment=TA_CENTER, textColor=GREEN_900,
+        spaceAfter=3
     ))
     styles.add(ParagraphStyle(
         name="XSubtitle", parent=styles["BodyText"], fontName="Helvetica",
-        fontSize=10, leading=13, alignment=TA_CENTER, textColor=GREY_500,
-        spaceAfter=12
+        fontSize=8.5, leading=10, alignment=TA_CENTER, textColor=GREY_500,
+        spaceAfter=5
     ))
     styles.add(ParagraphStyle(
         name="XH1", parent=styles["Heading1"], fontName="Helvetica-Bold",
-        fontSize=13.5, leading=17, textColor=GREEN_800,
-        spaceBefore=11, spaceAfter=7
+        fontSize=11.5, leading=13, textColor=GREEN_800,
+        spaceBefore=5, spaceAfter=2
     ))
     styles.add(ParagraphStyle(
         name="XH2", parent=styles["Heading2"], fontName="Helvetica-Bold",
-        fontSize=10.5, leading=14, textColor=GREEN_700,
-        spaceBefore=7, spaceAfter=4
+        fontSize=9.5, leading=11, textColor=GREEN_700,
+        spaceBefore=3, spaceAfter=1
     ))
     styles.add(ParagraphStyle(
         name="XBody", parent=styles["BodyText"], fontName="Helvetica",
-        fontSize=9.2, leading=13.5, textColor=GREY_700, spaceAfter=6
+        fontSize=8.5, leading=10.5, textColor=GREY_700, spaceAfter=2
     ))
     styles.add(ParagraphStyle(
         name="XSmall", parent=styles["BodyText"], fontName="Helvetica",
-        fontSize=7.6, leading=9.5, textColor=GREY_700, spaceAfter=2
+        fontSize=7.2, leading=8.3, textColor=GREY_700, spaceAfter=1
     ))
     styles.add(ParagraphStyle(
         name="XCaption", parent=styles["BodyText"], fontName="Helvetica-Oblique",
-        fontSize=8, leading=10, alignment=TA_CENTER, textColor=GREY_500,
-        spaceBefore=3, spaceAfter=3
+        fontSize=7.2, leading=8.5, alignment=TA_CENTER, textColor=GREY_500,
+        spaceBefore=1, spaceAfter=1
     ))
     styles.add(ParagraphStyle(
         name="XCover", parent=styles["Title"], fontName="Helvetica-Bold",
-        fontSize=25, leading=29, alignment=TA_CENTER, textColor=GREEN_900,
-        spaceAfter=12
+        fontSize=20, leading=22, alignment=TA_CENTER, textColor=GREEN_900,
+        spaceAfter=5
     ))
 
     def P(text, style="XBody"):
@@ -1375,9 +1375,9 @@ elif page == "Rapport PDF":
         photos = db_exec("SELECT * FROM photos WHERE log_id=? ORDER BY id", (log_id,), fetch=True)
 
         buf = io.BytesIO()
-        doc = SimpleDocTemplate(buf, pagesize=A4, rightMargin=1.3*cm, leftMargin=1.3*cm, topMargin=1.3*cm, bottomMargin=1.4*cm)
+        doc = SimpleDocTemplate(buf, pagesize=A4, rightMargin=1.3*cm, leftMargin=1.3*cm, topMargin=0.9*cm, bottomMargin=1.0*cm)
         story = [
-            Spacer(1, 0.35*cm),
+            Spacer(1, 0.04*cm),
             P("RAPPORT JOURNALIER DE STAGE", "XCover"),
             P("L2 DSTAAN · Laboratoire de pédologie · ISRA / CRA Saint-Louis", "XSubtitle"),
         ]
@@ -1397,15 +1397,15 @@ elif page == "Rapport PDF":
             ("VALIGN",(0,0),(-1,-1),"MIDDLE"),
             ("LEFTPADDING",(0,0),(-1,-1),6),
             ("RIGHTPADDING",(0,0),(-1,-1),6),
-            ("TOPPADDING",(0,0),(-1,-1),6),
-            ("BOTTOMPADDING",(0,0),(-1,-1),6),
+            ("TOPPADDING",(0,0),(-1,-1),3),
+            ("BOTTOMPADDING",(0,0),(-1,-1),3),
         ]))
         story = [
-            Spacer(1, 0.25*cm),
+            Spacer(1, 0.08*cm),
             P("RAPPORT JOURNALIER DE STAGE", "XCover"),
             P("L2 DSTAAN · Laboratoire de pédologie · ISRA / CRA Saint-Louis", "XSubtitle"),
             t,
-            Spacer(1, 10),
+            Spacer(1, 4),
         ]
 
         sections = [
@@ -1428,7 +1428,7 @@ elif page == "Rapport PDF":
             story += [P(title,"XH1"), P(text or "Non renseigné.")]
 
         if photos:
-            story += [PageBreak(), P("15. Photographies et observations visuelles", "XH1")]
+            story += [P("15. Photographies et observations visuelles", "XH1")]
             story.append(P(
                 "Photographies originales du stage — affichage direct, sans cadre, sans tableau et sans cellule.",
                 "XSmall"
@@ -1439,17 +1439,17 @@ elif page == "Rapport PDF":
                 if raw:
                     story.extend([
                         P(f"Photographie {index}", "XH2"),
-                        Spacer(1, 0.12*cm),
+                        Spacer(1, 0.04*cm),
                         RawPhotoFlowable(raw),
-                        Spacer(1, 0.12*cm),
+                        Spacer(1, 0.04*cm),
                         P(caption, "XCaption"),
-                        Spacer(1, 0.55*cm),
+                        Spacer(1, 0.15*cm),
                     ])
                 else:
                     story.extend([P(f"Photographie {index}", "XH2"), P("Données image absentes.", "XSmall")])
 
         story += [
-            Spacer(1, 12),
+            Spacer(1, 5),
             P("Signature de l'étudiant : ________________________________", "XBody"),
             P("Visa / observation de l'encadreur : ________________________________", "XBody"),
         ]
@@ -1481,9 +1481,9 @@ elif page == "Rapport PDF":
         """, (month, month), fetch=True)
 
         buf = io.BytesIO()
-        doc = SimpleDocTemplate(buf, pagesize=A4, rightMargin=1.2*cm, leftMargin=1.2*cm, topMargin=1.2*cm, bottomMargin=1.4*cm)
+        doc = SimpleDocTemplate(buf, pagesize=A4, rightMargin=1.2*cm, leftMargin=1.2*cm, topMargin=0.9*cm, bottomMargin=1.0*cm)
         story = [
-            Spacer(1, 0.35*cm),
+            Spacer(1, 0.04*cm),
             P("RAPPORT MENSUEL DE STAGE", "XCover"),
             P(f"{month_label(month)} · L2 DSTAAN · Laboratoire de pédologie · ISRA / CRA Saint-Louis", "XSubtitle"),
         ]
@@ -1503,15 +1503,15 @@ elif page == "Rapport PDF":
             ("VALIGN",(0,0),(-1,-1),"MIDDLE"),
             ("LEFTPADDING",(0,0),(-1,-1),6),
             ("RIGHTPADDING",(0,0),(-1,-1),6),
-            ("TOPPADDING",(0,0),(-1,-1),6),
-            ("BOTTOMPADDING",(0,0),(-1,-1),6),
+            ("TOPPADDING",(0,0),(-1,-1),3),
+            ("BOTTOMPADDING",(0,0),(-1,-1),3),
         ]))
         story = [
-            Spacer(1, 0.25*cm),
+            Spacer(1, 0.08*cm),
             P("RAPPORT MENSUEL DE STAGE", "XCover"),
             P(f"{month_label(month)} · L2 DSTAAN · Laboratoire de pédologie · ISRA / CRA Saint-Louis", "XSubtitle"),
             it,
-            Spacer(1, 10),
+            Spacer(1, 4),
         ]
 
         total_hours = sum(float(x.get("hours") or 0) for x in logs)
@@ -1591,7 +1591,7 @@ elif page == "Rapport PDF":
             story.append(at)
 
         if photos:
-            story += [PageBreak(), P("16. Photographies du mois", "XH1")]
+            story += [P("16. Photographies du mois", "XH1")]
             story.append(P(
                 "Photographies originales du stage — affichage direct, sans cadre, sans tableau et sans cellule.",
                 "XSmall"
@@ -1602,11 +1602,11 @@ elif page == "Rapport PDF":
                 if raw:
                     story.extend([
                         P(f"Photographie {index}", "XH2"),
-                        Spacer(1, 0.12*cm),
+                        Spacer(1, 0.04*cm),
                         RawPhotoFlowable(raw),
-                        Spacer(1, 0.12*cm),
+                        Spacer(1, 0.04*cm),
                         P(caption, "XCaption"),
-                        Spacer(1, 0.55*cm),
+                        Spacer(1, 0.15*cm),
                     ])
                 else:
                     story.extend([P(f"Photographie {index}", "XH2"), P("Données image absentes.", "XSmall")])
@@ -1619,17 +1619,12 @@ elif page == "Rapport PDF":
               "de respect des procédures et de mise en relation des résultats avec les problématiques agronomiques."),
             P("18. Observation de l'encadreur", "XH1"),
             P(m.get("supervisor_comment") or "Observation / visa de l'encadreur :"),
-            Spacer(1, 10),
+            Spacer(1, 4),
             P("Signature de l'étudiant : ________________________________", "XBody"),
             P("Signature / visa de l'encadreur : ________________________________", "XBody"),
         ]
 
         doc.build(story, onFirstPage=pdf_footer, onLaterPages=pdf_footer)
-
-        for ph in photos:
-            tmp = PHOTO_DIR / f"pdf_tmp_{ph['id']}.png"
-            try: tmp.unlink()
-            except Exception: pass
 
         return buf.getvalue()
 
