@@ -1390,28 +1390,28 @@ elif page == "Rapport PDF":
             photo_rows = []
             current = []
             for ph in photos:
-                path = PHOTO_DIR / f"pdf_tmp_{ph['id']}.jpg"
-                path.write_bytes(ph["data"])
+                path = PHOTO_DIR / f"pdf_tmp_{ph['id']}.png"
+                caption = ph.get("caption") or ph.get("filename") or "Photo"
                 try:
-                    # Photos XXL : largeur quasi pleine page.
-                    try:
-                        img = RLImage(
-                            str(path),
-                            width=7.8*cm,
-                            height=6.2*cm,
-                            preserveAspectRatio=True,
-                            anchor="c",
-                        )
-                        caption = ph.get("caption") or ph.get("filename") or "Photo"
-                        cell = [img, P(caption, "XCaption")]
-                    except Exception:
-                        caption = ph.get("caption") or ph.get("filename") or "Photo non lisible"
-                        cell = [
-                            P(f"Image non disponible : {caption}", "XSmall"),
-                            P(caption, "XCaption")
-                        ]
+                    # Normalise toutes les images en PNG avant insertion PDF.
+                    raw = bytes(ph["data"])
+                    with Image.open(io.BytesIO(raw)) as pil_img:
+                        if pil_img.mode not in ("RGB", "RGBA"):
+                            pil_img = pil_img.convert("RGB")
+                        pil_img.save(path, format="PNG")
+                    img = RLImage(
+                        str(path),
+                        width=7.8*cm,
+                        height=6.2*cm,
+                        preserveAspectRatio=True,
+                        anchor="c",
+                    )
+                    cell = [img, P(caption, "XCaption")]
                 except Exception:
-                    cell = [P(ph["filename"], "XSmall")]
+                    cell = [
+                        P(f"Image non disponible : {caption}", "XSmall"),
+                        P(caption, "XCaption")
+                    ]
                 current.append(cell)
                 if len(current) == 2:
                     photo_rows.append(current)
@@ -1437,7 +1437,7 @@ elif page == "Rapport PDF":
         doc.build(story, onFirstPage=pdf_footer, onLaterPages=pdf_footer)
 
         for ph in photos:
-            tmp = PHOTO_DIR / f"pdf_tmp_{ph['id']}.jpg"
+            tmp = PHOTO_DIR / f"pdf_tmp_{ph['id']}.png"
             try:
                 tmp.unlink()
             except Exception:
@@ -1578,10 +1578,17 @@ elif page == "Rapport PDF":
             photo_rows = []
             current = []
             for ph in photos:
-                path = PHOTO_DIR / f"pdf_month_tmp_{ph['id']}.jpg"
-                path.write_bytes(ph["data"])
-                # Une image invalide/non supportée ne doit pas bloquer tout le PDF.
+                path = PHOTO_DIR / f"pdf_month_tmp_{ph['id']}.png"
+                caption = ph.get("caption") or ph.get("filename") or "Photo"
                 try:
+                    # Normalise le fichier original (JPG/PNG/WEBP/etc.) en PNG.
+                    # Cela évite que ReportLab ignore certaines images pourtant
+                    # correctement enregistrées dans PostgreSQL.
+                    raw = bytes(ph["data"])
+                    with Image.open(io.BytesIO(raw)) as pil_img:
+                        if pil_img.mode not in ("RGB", "RGBA"):
+                            pil_img = pil_img.convert("RGB")
+                        pil_img.save(path, format="PNG")
                     img = RLImage(
                         str(path),
                         width=7.8*cm,
@@ -1589,10 +1596,8 @@ elif page == "Rapport PDF":
                         preserveAspectRatio=True,
                         anchor="c",
                     )
-                    caption = ph.get("caption") or ph.get("filename") or "Photo"
                     current.append([img, P(caption, "XCaption")])
                 except Exception:
-                    caption = ph.get("caption") or ph.get("filename") or "Photo non lisible"
                     current.append([
                         P(f"Image non disponible : {caption}", "XSmall"),
                         P(caption, "XCaption")
@@ -1621,7 +1626,7 @@ elif page == "Rapport PDF":
         doc.build(story, onFirstPage=pdf_footer, onLaterPages=pdf_footer)
 
         for ph in photos:
-            tmp = PHOTO_DIR / f"pdf_month_tmp_{ph['id']}.jpg"
+            tmp = PHOTO_DIR / f"pdf_month_tmp_{ph['id']}.png"
             try: tmp.unlink()
             except Exception: pass
 
