@@ -1328,7 +1328,7 @@ elif page == "Rapport PDF":
 
     class RawPhotoFlowable(Flowable):
         """Affiche directement les octets de la photo dans le PDF, sans fichier temporaire ni tableau."""
-        def __init__(self, raw, max_width=17.2*cm, max_height=22.8*cm):
+        def __init__(self, raw, max_width=5.7*cm, max_height=7.6*cm):
             Flowable.__init__(self)
             self.raw = bytes(raw) if raw is not None else b""
             self.max_width = max_width
@@ -1440,7 +1440,7 @@ elif page == "Rapport PDF":
                     story.extend([
                         P(f"Photographie {index}", "XH2"),
                         Spacer(1, 0.04*cm),
-                        RawPhotoFlowable(raw),
+                        RawPhotoFlowable(raw, max_width=5.7*cm, max_height=7.6*cm),
                         Spacer(1, 0.04*cm),
                         P(caption, "XCaption"),
                         Spacer(1, 0.15*cm),
@@ -1603,7 +1603,7 @@ elif page == "Rapport PDF":
                     story.extend([
                         P(f"Photographie {index}", "XH2"),
                         Spacer(1, 0.04*cm),
-                        RawPhotoFlowable(raw),
+                        RawPhotoFlowable(raw, max_width=5.7*cm, max_height=7.6*cm),
                         Spacer(1, 0.04*cm),
                         P(caption, "XCaption"),
                         Spacer(1, 0.15*cm),
