@@ -1386,36 +1386,50 @@ elif page == "Rapport PDF":
         for title, text in sections:
             story += [P(title,"XH1"), P(text or "Non renseigné.")]
 
+        temp_files=[]
         if photos:
             story += [PageBreak(), P("15. Photographies et observations visuelles", "XH1")]
-            photo_rows=[]; current=[]; temp_files=[]
-            for ph in photos:
-                caption=ph.get("caption") or ph.get("filename") or "Photo"
-                path=PHOTO_DIR / f"pdf_daily_{log_id}_{ph['id']}.jpg"
+            story.append(P(
+                "Les photographies ci-dessous sont présentées directement dans le rapport, "
+                "sans cadre, sans tableau et sans cellule graphique.",
+                "XSmall"
+            ))
+            for index, ph in enumerate(photos, 1):
+                caption = ph.get("caption") or ph.get("filename") or f"Photo {index}"
+                path = PHOTO_DIR / f"pdf_daily_{log_id}_{ph['id']}.jpg"
                 try:
                     with Image.open(io.BytesIO(bytes(ph["data"]))) as source_img:
                         source_img.load()
                         try:
                             from PIL import ImageOps
-                            pil_img=ImageOps.exif_transpose(source_img)
+                            pil_img = ImageOps.exif_transpose(source_img)
                         except Exception:
-                            pil_img=source_img.copy()
+                            pil_img = source_img.copy()
                         if pil_img.mode == "RGBA":
-                            bg=Image.new("RGB",pil_img.size,"white"); bg.paste(pil_img,mask=pil_img.getchannel("A")); pil_img=bg
+                            bg = Image.new("RGB", pil_img.size, "white")
+                            bg.paste(pil_img, mask=pil_img.getchannel("A"))
+                            pil_img = bg
                         elif pil_img.mode != "RGB":
-                            pil_img=pil_img.convert("RGB")
-                        pil_img.save(path,format="JPEG",quality=92,optimize=True)
+                            pil_img = pil_img.convert("RGB")
+                        pil_img.save(path, format="JPEG", quality=95, optimize=True)
                     temp_files.append(path)
-                    current.append([RLImage(str(path),width=7.8*cm,height=6.2*cm,preserveAspectRatio=True,anchor="c"),P(caption,"XCaption")])
+
+                    img = RLImage(str(path), width=17.2*cm, height=22.5*cm,
+                                  preserveAspectRatio=True, anchor="c")
+                    story.extend([
+                        Spacer(1, 0.25*cm),
+                        P(f"Photographie {index}", "XH2"),
+                        img,
+                        Spacer(1, 0.15*cm),
+                        P(caption, "XCaption"),
+                        Spacer(1, 0.45*cm),
+                    ])
                 except Exception:
-                    current.append([P(f"Image non disponible : {caption}","XSmall"),P(caption,"XCaption")])
-                if len(current)==2: photo_rows.append(current); current=[]
-            if current: current.append(""); photo_rows.append(current)
-            pt=Table(photo_rows,colWidths=[8.2*cm,8.2*cm])
-            pt.setStyle(TableStyle([("GRID",(0,0),(-1,-1),.45,colors.HexColor("#777777")),("VALIGN",(0,0),(-1,-1),"TOP"),("LEFTPADDING",(0,0),(-1,-1),6),("RIGHTPADDING",(0,0),(-1,-1),6),("TOPPADDING",(0,0),(-1,-1),6),("BOTTOMPADDING",(0,0),(-1,-1),6)]))
-            story.append(pt)
-        else:
-            temp_files=[]
+                    story.extend([
+                        P(f"Photographie {index}", "XH2"),
+                        P(f"Image non disponible : {caption}", "XSmall"),
+                        Spacer(1, 0.3*cm),
+                    ])
 
         story += [
             Spacer(1, 12),
@@ -1560,36 +1574,50 @@ elif page == "Rapport PDF":
             at.setStyle(TableStyle([("GRID",(0,0),(-1,-1),.45,colors.HexColor("#777777")),("BACKGROUND",(0,0),(-1,0),colors.white),("VALIGN",(0,0),(-1,-1),"TOP")]))
             story.append(at)
 
+        temp_files=[]
         if photos:
             story += [PageBreak(), P("16. Photographies du mois", "XH1")]
-            photo_rows=[]; current=[]; temp_files=[]
-            for ph in photos:
-                caption=ph.get("caption") or ph.get("filename") or "Photo"
-                path=PHOTO_DIR / f"pdf_month_{month}_{ph['id']}.jpg"
+            story.append(P(
+                "Les photographies sont présentées directement, une par une, "
+                "sans cadre, sans tableau et sans cellule graphique.",
+                "XSmall"
+            ))
+            for index, ph in enumerate(photos, 1):
+                caption = ph.get("caption") or ph.get("filename") or f"Photo {index}"
+                path = PHOTO_DIR / f"pdf_month_{month}_{ph['id']}.jpg"
                 try:
                     with Image.open(io.BytesIO(bytes(ph["data"]))) as source_img:
                         source_img.load()
                         try:
                             from PIL import ImageOps
-                            pil_img=ImageOps.exif_transpose(source_img)
+                            pil_img = ImageOps.exif_transpose(source_img)
                         except Exception:
-                            pil_img=source_img.copy()
+                            pil_img = source_img.copy()
                         if pil_img.mode == "RGBA":
-                            bg=Image.new("RGB",pil_img.size,"white"); bg.paste(pil_img,mask=pil_img.getchannel("A")); pil_img=bg
+                            bg = Image.new("RGB", pil_img.size, "white")
+                            bg.paste(pil_img, mask=pil_img.getchannel("A"))
+                            pil_img = bg
                         elif pil_img.mode != "RGB":
-                            pil_img=pil_img.convert("RGB")
-                        pil_img.save(path,format="JPEG",quality=92,optimize=True)
+                            pil_img = pil_img.convert("RGB")
+                        pil_img.save(path, format="JPEG", quality=95, optimize=True)
                     temp_files.append(path)
-                    current.append([RLImage(str(path),width=7.8*cm,height=6.2*cm,preserveAspectRatio=True,anchor="c"),P(caption,"XCaption")])
+
+                    img = RLImage(str(path), width=17.2*cm, height=22.5*cm,
+                                  preserveAspectRatio=True, anchor="c")
+                    story.extend([
+                        Spacer(1, 0.25*cm),
+                        P(f"Photographie {index}", "XH2"),
+                        img,
+                        Spacer(1, 0.15*cm),
+                        P(caption, "XCaption"),
+                        Spacer(1, 0.45*cm),
+                    ])
                 except Exception:
-                    current.append([P(f"Image non disponible : {caption}","XSmall"),P(caption,"XCaption")])
-                if len(current)==2: photo_rows.append(current); current=[]
-            if current: current.append(""); photo_rows.append(current)
-            pt=Table(photo_rows,colWidths=[8.2*cm,8.2*cm])
-            pt.setStyle(TableStyle([("GRID",(0,0),(-1,-1),.45,colors.HexColor("#777777")),("VALIGN",(0,0),(-1,-1),"TOP"),("LEFTPADDING",(0,0),(-1,-1),5),("RIGHTPADDING",(0,0),(-1,-1),5),("TOPPADDING",(0,0),(-1,-1),5),("BOTTOMPADDING",(0,0),(-1,-1),5)]))
-            story.append(pt)
-        else:
-            temp_files=[]
+                    story.extend([
+                        P(f"Photographie {index}", "XH2"),
+                        P(f"Image non disponible : {caption}", "XSmall"),
+                        Spacer(1, 0.3*cm),
+                    ])
 
         story += [
             P("17. Conclusion générale", "XH1"),
