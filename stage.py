@@ -1430,23 +1430,50 @@ elif page == "Rapport PDF":
         if photos:
             story += [P("15. Photographies et observations visuelles", "XH1")]
             story.append(P(
-                "Photographies originales du stage — affichage direct, sans cadre, sans tableau et sans cellule.",
+                "Photographies présentées deux par deux, côte à côte, avec leur légende directement sous chaque image.",
                 "XSmall"
             ))
+
+            photo_cells = []
             for index, ph in enumerate(photos, 1):
                 caption = ph.get("caption") or ph.get("filename") or f"Photo {index}"
                 raw = ph.get("data")
                 if raw:
-                    story.extend([
-                        P(f"Photographie {index}", "XH2"),
-                        Spacer(1, 0.04*cm),
-                        RawPhotoFlowable(raw, max_width=3.8*cm, max_height=5.1*cm),
-                        Spacer(1, 0.04*cm),
-                        P(caption, "XCaption"),
-                        Spacer(1, 0.15*cm),
-                    ])
+                    photo_cells.append(KeepTogether([
+                        RawPhotoFlowable(raw, max_width=7.1*cm, max_height=5.8*cm),
+                        Spacer(1, 0.08*cm),
+                        P(f"<b>Photo {index} —</b> {caption}", "XCaption")
+                    ]))
                 else:
-                    story.extend([P(f"Photographie {index}", "XH2"), P("Données image absentes.", "XSmall")])
+                    photo_cells.append(KeepTogether([
+                        P(f"<b>Photo {index}</b>", "XCaption"),
+                        P("Données image absentes.", "XSmall")
+                    ]))
+
+            photo_rows = []
+            for i in range(0, len(photo_cells), 2):
+                row = photo_cells[i:i+2]
+                if len(row) == 1:
+                    row.append("")
+                photo_rows.append(row)
+
+            photo_table = Table(
+                photo_rows,
+                colWidths=[8.15*cm, 8.15*cm],
+                hAlign="CENTER",
+                repeatRows=0
+            )
+            photo_table.setStyle(TableStyle([
+                ("VALIGN", (0,0), (-1,-1), "TOP"),
+                ("ALIGN", (0,0), (-1,-1), "CENTER"),
+                ("LEFTPADDING", (0,0), (-1,-1), 3),
+                ("RIGHTPADDING", (0,0), (-1,-1), 3),
+                ("TOPPADDING", (0,0), (-1,-1), 5),
+                ("BOTTOMPADDING", (0,0), (-1,-1), 8),
+                ("LINEBELOW", (0,0), (-1,-1), 0, colors.white),
+                ("BOX", (0,0), (-1,-1), 0, colors.white),
+            ]))
+            story += [photo_table, Spacer(1, 0.2*cm)]
 
         story += [
             Spacer(1, 5),
@@ -1593,23 +1620,50 @@ elif page == "Rapport PDF":
         if photos:
             story += [P("16. Photographies du mois", "XH1")]
             story.append(P(
-                "Photographies originales du stage — affichage direct, sans cadre, sans tableau et sans cellule.",
+                "Photographies présentées deux par deux, côte à côte, avec leur légende directement sous chaque image.",
                 "XSmall"
             ))
+
+            photo_cells = []
             for index, ph in enumerate(photos, 1):
                 caption = ph.get("caption") or ph.get("filename") or f"Photo {index}"
                 raw = ph.get("data")
                 if raw:
-                    story.extend([
-                        P(f"Photographie {index}", "XH2"),
-                        Spacer(1, 0.04*cm),
-                        RawPhotoFlowable(raw, max_width=3.8*cm, max_height=5.1*cm),
-                        Spacer(1, 0.04*cm),
-                        P(caption, "XCaption"),
-                        Spacer(1, 0.15*cm),
-                    ])
+                    photo_cells.append(KeepTogether([
+                        RawPhotoFlowable(raw, max_width=7.1*cm, max_height=5.8*cm),
+                        Spacer(1, 0.08*cm),
+                        P(f"<b>Photo {index} —</b> {caption}", "XCaption")
+                    ]))
                 else:
-                    story.extend([P(f"Photographie {index}", "XH2"), P("Données image absentes.", "XSmall")])
+                    photo_cells.append(KeepTogether([
+                        P(f"<b>Photo {index}</b>", "XCaption"),
+                        P("Données image absentes.", "XSmall")
+                    ]))
+
+            photo_rows = []
+            for i in range(0, len(photo_cells), 2):
+                row = photo_cells[i:i+2]
+                if len(row) == 1:
+                    row.append("")
+                photo_rows.append(row)
+
+            photo_table = Table(
+                photo_rows,
+                colWidths=[8.15*cm, 8.15*cm],
+                hAlign="CENTER",
+                repeatRows=0
+            )
+            photo_table.setStyle(TableStyle([
+                ("VALIGN", (0,0), (-1,-1), "TOP"),
+                ("ALIGN", (0,0), (-1,-1), "CENTER"),
+                ("LEFTPADDING", (0,0), (-1,-1), 3),
+                ("RIGHTPADDING", (0,0), (-1,-1), 3),
+                ("TOPPADDING", (0,0), (-1,-1), 5),
+                ("BOTTOMPADDING", (0,0), (-1,-1), 8),
+                ("LINEBELOW", (0,0), (-1,-1), 0, colors.white),
+                ("BOX", (0,0), (-1,-1), 0, colors.white),
+            ]))
+            story += [photo_table, Spacer(1, 0.2*cm)]
 
         story += [
             P("17. Conclusion générale", "XH1"),
