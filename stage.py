@@ -770,7 +770,7 @@ def init_db():
         db_exec("""INSERT INTO general_report_settings
             (id, acknowledgements, structure_presentation, context, problem_statement, methodology,
              general_assessment, general_conclusion, recommendations, updated_at)
-            VALUES (1,'','','','','','','','','%s')""",
+            VALUES (1,'','','','','','','','',%s)""",
             (datetime.now().isoformat(timespec="seconds"),))
 
     default_skills = [
