@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-STAGE IMMERSION L2 DSTAAN — LABORATOIRE DE PÉDOLOGIE
+CARNET DE STAGE D’IMMERSION — L2 DSTAAN
 ISRA / CRA SAINT-LOUIS
 
 VERSION XXL
@@ -17,7 +17,7 @@ VERSION XXL
 - Encadrement
 - Documents et notes
 - Rapport journalier PDF avec introduction, photos et conclusion
-- Rapport mensuel PDF avec introduction, synthèse, tableaux, photos et conclusion
+- Rapport général de stage PDF complet, réunissant les informations du carnet
 - Export CSV
 - Base PostgreSQL / Supabase
 - Journal d'audit
@@ -585,8 +585,8 @@ def get_credentials():
 def login_screen():
     st.markdown("""
     <div class="top-brand">
-        <h1>🌱 Carnet de stage L2 DSTAAN</h1>
-        <p>Laboratoire de pédologie — ISRA / CRA Saint-Louis</p>
+        <h1>🌱 Carnet de stage d’immersion — L2 DSTAAN</h1>
+        <p>Stage d’immersion · ISRA / CRA Saint-Louis · Services, laboratoires et terrain</p>
     </div>
     """, unsafe_allow_html=True)
 
@@ -763,7 +763,7 @@ def init_db():
     if not db_exec("SELECT id FROM profile WHERE id=1", fetch=True):
         db_exec("""INSERT INTO profile
             (id, student_name, formation, level, institution, host_structure, service, supervisor, start_date, end_date, academic_year, objectives, presentation, updated_at)
-            VALUES (1, '', 'DSTAAN', 'L2', '', 'ISRA / CRA Saint-Louis', 'Laboratoire de pédologie', '', '', '', '', '', '', %s)""",
+            VALUES (1, '', 'DSTAAN', 'L2', '', 'ISRA / CRA Saint-Louis', 'Stage d’immersion', '', '', '', '', '', '', %s)""",
             (datetime.now().isoformat(timespec="seconds"),))
 
     if not db_exec("SELECT id FROM general_report_settings WHERE id=1", fetch=True):
@@ -880,8 +880,8 @@ def clean_html(text):
 
 st.markdown("""
 <div class="top-brand">
-    <h1>🌱 Carnet de stage — L2 DSTAAN</h1>
-    <p>Laboratoire de pédologie · ISRA / CRA Saint-Louis · Suivi scientifique et professionnel</p>
+    <h1>🌱 Carnet de stage d’immersion — L2 DSTAAN</h1>
+    <p>Stage d’immersion · ISRA / CRA Saint-Louis · Suivi scientifique, technique et professionnel</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -1015,7 +1015,7 @@ elif page == "Profil":
             institution = st.text_input("Établissement", p.get("institution",""))
             host_structure = st.text_input("Structure d'accueil", p.get("host_structure","ISRA / CRA Saint-Louis"))
         with c2:
-            service = st.text_input("Service / laboratoire", p.get("service","Laboratoire de pédologie"))
+            service = st.text_input("Service / laboratoire / unité d’accueil", p.get("service","Stage d’immersion"))
             supervisor = st.text_input("Encadreur", p.get("supervisor",""))
             start_date = st.text_input("Date de début", p.get("start_date",""))
             end_date = st.text_input("Date de fin", p.get("end_date",""))
@@ -1092,7 +1092,7 @@ elif page == "Journal quotidien":
                 log_date = st.date_input("Date", default_date)
                 title = st.text_input("Titre / objectif", selected.get("title","") if selected else "")
             with c2:
-                location = st.text_input("Lieu / activité", selected.get("location","Laboratoire de pédologie") if selected else "Laboratoire de pédologie")
+                location = st.text_input("Lieu / activité", selected.get("location","Service / laboratoire / terrain") if selected else "Service / laboratoire / terrain")
                 supervisor = st.text_input("Encadreur", selected.get("supervisor","") if selected else "")
             with c3:
                 hours = st.number_input("Durée (heures)", 0.0, 24.0, float(selected.get("hours",0) if selected else 0), .5)
@@ -1255,9 +1255,7 @@ elif page == "Rapport PDF":
     <div class="card" style="background:linear-gradient(135deg,#ffffff,#effaf2);border-left:6px solid #16a34a;">
         <div style="font-size:1.15rem;font-weight:800;color:#14532d;">📘 Centre de production des rapports</div>
         <div style="color:#667085;margin-top:5px;">
-            Génère des rapports journaliers et mensuels avec une mise en page vert/blanc,
-            des tableaux structurés, des introductions et conclusions, ainsi que des photographies
-            en grand format.
+            Génère un rapport général de stage d’immersion qui rassemble les informations du carnet : profil, périodes, journées, activités, observations, résultats, analyses, échantillons, photos, matériel, compétences, documents, planning et incidents.
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -1336,7 +1334,7 @@ elif page == "Rapport PDF":
         canvas.setFillColor(GREY_500)
         canvas.drawString(
             1.3*cm, .72*cm,
-            "Carnet de stage · L2 DSTAAN · Laboratoire de pédologie · ISRA / CRA Saint-Louis"
+            "Carnet de stage d’immersion · L2 DSTAAN · ISRA / CRA Saint-Louis"
         )
         canvas.setFillColor(GREEN_800)
         canvas.drawRightString(A4[0]-1.3*cm, .72*cm, f"PAGE {doc.page}")
@@ -1395,7 +1393,7 @@ elif page == "Rapport PDF":
         story = [
             Spacer(1, 0.04*cm),
             P("RAPPORT JOURNALIER DE STAGE", "XCover"),
-            P("L2 DSTAAN · Laboratoire de pédologie · ISRA / CRA Saint-Louis", "XSubtitle"),
+            P("L2 DSTAAN · Stage d’immersion · ISRA / CRA Saint-Louis", "XSubtitle"),
         ]
 
         info = [
@@ -1419,7 +1417,7 @@ elif page == "Rapport PDF":
         story = [
             Spacer(1, 0.08*cm),
             P("RAPPORT JOURNALIER DE STAGE", "XCover"),
-            P("L2 DSTAAN · Laboratoire de pédologie · ISRA / CRA Saint-Louis", "XSubtitle"),
+            P("L2 DSTAAN · Stage d’immersion · ISRA / CRA Saint-Louis", "XSubtitle"),
             t,
             Spacer(1, 4),
         ]
@@ -1531,7 +1529,7 @@ elif page == "Rapport PDF":
         story = [
             Spacer(1, 0.04*cm),
             P("RAPPORT MENSUEL DE STAGE", "XCover"),
-            P(f"{month_label(month)} · L2 DSTAAN · Laboratoire de pédologie · ISRA / CRA Saint-Louis", "XSubtitle"),
+            P(f"{month_label(month)} · L2 DSTAAN · Stage d’immersion · ISRA / CRA Saint-Louis", "XSubtitle"),
         ]
 
         info = [
@@ -1555,7 +1553,7 @@ elif page == "Rapport PDF":
         story = [
             Spacer(1, 0.08*cm),
             P("RAPPORT MENSUEL DE STAGE", "XCover"),
-            P(f"{month_label(month)} · L2 DSTAAN · Laboratoire de pédologie · ISRA / CRA Saint-Louis", "XSubtitle"),
+            P(f"{month_label(month)} · L2 DSTAAN · Stage d’immersion · ISRA / CRA Saint-Louis", "XSubtitle"),
             it,
             Spacer(1, 4),
         ]
@@ -1706,7 +1704,7 @@ elif page == "Rapport PDF":
 
     # -------- Rapport général de stage, organisé par périodes / services --------
     st.markdown("### 🏛️ Rapport général de stage — structure par périodes et services")
-    st.caption("Définis plusieurs étapes successives du stage : laboratoire de pédologie, sélection végétale, journées avec l’encadreur, terrain, etc. Le rapport général rassemble ces périodes et les journaux quotidiens correspondants.")
+    st.caption("Définis toutes les étapes du stage d’immersion : services, laboratoires, sélection végétale, terrain, réunions, documentation, journées avec l’encadreur ou toute autre unité visitée. Le rapport général rassemble les informations de l’ensemble du carnet.")
 
     periods = [dict(r) for r in db_exec("SELECT * FROM internship_periods ORDER BY start_date,id", fetch=True)]
     period_mode = st.radio("Gestion des périodes", ["Ajouter une période", "Modifier une période", "Supprimer une période"], horizontal=True, key="period_mode")
@@ -1730,7 +1728,7 @@ elif page == "Rapport PDF":
         with st.form("internship_period_form"):
             pc1, pc2 = st.columns(2)
             with pc1:
-                period_title = st.text_input("Sous-structure / période *", cp.get("title", "Laboratoire de pédologie"), placeholder="Ex. Laboratoire de pédologie")
+                period_title = st.text_input("Sous-structure / période *", cp.get("title", "Période d’immersion"), placeholder="Ex. Laboratoire, service, terrain, encadrement…")
                 period_start = st.date_input("Date de début de la période", value=datetime.strptime(cp['start_date'], "%Y-%m-%d").date() if cp.get('start_date') else date.today(), key="period_start_date")
                 period_end = st.date_input("Date de fin de la période", value=datetime.strptime(cp['end_date'], "%Y-%m-%d").date() if cp.get('end_date') else date.today(), key="period_end_date")
                 period_supervisor = st.text_input("Encadreur de cette période", cp.get("supervisor", ""))
@@ -1792,11 +1790,19 @@ elif page == "Rapport PDF":
         all_logs = [dict(x) for x in db_exec("SELECT * FROM daily_logs ORDER BY log_date,id", fetch=True)]
         all_analyses = [dict(x) for x in db_exec("SELECT * FROM analyses ORDER BY analysis_date,id", fetch=True)]
         all_samples = [dict(x) for x in db_exec("SELECT * FROM samples ORDER BY sample_date,id", fetch=True)]
+        all_photos = [dict(x) for x in db_exec("SELECT * FROM photos ORDER BY photo_date,id", fetch=True)]
+        all_equipment = [dict(x) for x in db_exec("SELECT * FROM equipment ORDER BY category,name", fetch=True)]
+        all_skills = [dict(x) for x in db_exec("SELECT * FROM skills ORDER BY category,skill", fetch=True)]
+        all_contacts = [dict(x) for x in db_exec("SELECT * FROM contacts ORDER BY name", fetch=True)]
+        all_documents = [dict(x) for x in db_exec("SELECT * FROM documents ORDER BY doc_date,id", fetch=True)]
+        all_planning = [dict(x) for x in db_exec("SELECT * FROM planning ORDER BY task_date,id", fetch=True)]
+        all_incidents = [dict(x) for x in db_exec("SELECT * FROM incidents ORDER BY incident_date,id", fetch=True)]
+        all_protocols = [dict(x) for x in db_exec("SELECT * FROM protocols ORDER BY category,title", fetch=True)]
         total_hours = sum(float(x.get("hours") or 0) for x in all_logs)
         buf_general = io.BytesIO()
         general_doc = SimpleDocTemplate(buf_general, pagesize=A4, rightMargin=1.7*cm, leftMargin=1.7*cm, topMargin=1.7*cm, bottomMargin=1.6*cm)
         gs_story = [Spacer(1, 2.0*cm), P("RAPPORT GÉNÉRAL DE STAGE", "XCover"),
-                    P("Rapport d’étude et d’immersion professionnelle", "XSubtitle"), Spacer(1, .8*cm),
+                    P("Rapport général d’immersion professionnelle et de découverte des services", "XSubtitle"), Spacer(1, .8*cm),
                     P("ISRA / CRA SAINT-LOUIS", "XCover"), Spacer(1, .4*cm)]
         cover = [[P("<b>Étudiant</b>","XSmall"), P(pp.get("student_name"),"XSmall")],
                  [P("<b>Formation</b>","XSmall"), P(f"{pp.get('formation','')} — {pp.get('level','')}","XSmall")],
@@ -1815,9 +1821,9 @@ elif page == "Rapport PDF":
         add_chapter("2. CONTEXTE ET JUSTIFICATION DU STAGE", g.get("context"))
         add_chapter("3. PROBLÉMATIQUE ET OBJECTIFS", ("Problématique :\n" + (g.get("problem_statement") or "À préciser.")) + "\nObjectifs du stage :\n" + (pp.get("objectives") or "À préciser."))
         add_chapter("4. DÉMARCHE MÉTHODOLOGIQUE GÉNÉRALE", g.get("methodology"))
-        gs_story += [P("5. DÉROULEMENT DU STAGE PAR PÉRIODES / SOUS-STRUCTURES", "XH1"), P("Chaque période constitue une partie autonome du rapport. Les entrées du journal quotidien comprises dans les dates de la période sont reprises pour assurer la traçabilité.")]
+        gs_story += [P("5. DÉROULEMENT DU STAGE D’IMMERSION PAR PÉRIODES / SERVICES / UNITÉS", "XH1"), P("Chaque période peut correspondre à un service, laboratoire, unité, activité de terrain, séance d’encadrement ou autre étape de l’immersion. Les entrées du carnet comprises dans les dates de la période sont reprises pour assurer la traçabilité.")]
         if not period_rows:
-            gs_story.append(P("Aucune période n’a encore été définie. Ajoute par exemple : 15 jours au laboratoire de pédologie, 7 jours au laboratoire de sélection végétale, puis une période d’accompagnement avec l’encadreur."))
+            gs_story.append(P("Aucune période n’a encore été définie. Ajoute toutes les périodes de ton immersion : services, laboratoires, terrain, documentation, réunions et accompagnement par les encadreurs, selon ton parcours réel."))
         for i, per in enumerate(period_rows, 1):
             gs_story += [P(f"5.{i}. {per.get('title') or 'Période de stage'}", "XH2"),
                          P(f"<b>Dates :</b> {fmt_date(per.get('start_date'))} – {fmt_date(per.get('end_date'))}    <b>Encadreur :</b> {per.get('supervisor') or pp.get('supervisor') or 'À préciser'}"),
@@ -1851,8 +1857,130 @@ elif page == "Rapport PDF":
             art = Table(ar, colWidths=[2.5*cm,3.2*cm,5.2*cm,4.3*cm], repeatRows=1)
             art.setStyle(TableStyle([("GRID",(0,0),(-1,-1),.4,BORDER),("BACKGROUND",(0,0),(-1,0),GREEN_100),("VALIGN",(0,0),(-1,-1),"TOP")]))
             gs_story += [art]
-        add_chapter("8. CONCLUSION GÉNÉRALE", g.get("general_conclusion"))
-        add_chapter("9. RECOMMANDATIONS ET PERSPECTIVES", g.get("recommendations"))
+            for a in all_analyses:
+                gs_story += [P(f"<b>{fmt_date(a.get('analysis_date'))} — {a.get('analysis_name') or 'Analyse'}</b>", "XH2"),
+                             P(f"Échantillon : {a.get('sample_code') or '—'} · Unité : {a.get('unit') or '—'} · Appareil : {a.get('equipment') or '—'}"),
+                             P(f"Objectif : {a.get('objective') or '—'}"), P(f"Méthode : {a.get('method') or '—'}"),
+                             P(f"Résultat : {a.get('result') or '—'}"), P(f"Interprétation : {a.get('interpretation') or '—'}"),
+                             P(f"Utilité agronomique : {a.get('agronomic_use') or '—'}"), P(f"Contrôle qualité : {a.get('quality_control') or '—'}"),
+                             P(f"Observations : {a.get('observations') or '—'}") ]
+        # Journal quotidien détaillé : reprendre toutes les rubriques du carnet, pas seulement le titre.
+        gs_story += [P("8. JOURNAL DÉTAILLÉ DES ACTIVITÉS DU CARNET", "XH1")]
+        if all_logs:
+            for i, item in enumerate(all_logs, 1):
+                gs_story += [P(f"8.{i}. {fmt_date(item.get('log_date'))} — {item.get('title') or 'Activité sans titre'}", "XH2")]
+                details = [
+                    ("Lieu / service", item.get("location")), ("Encadreur", item.get("supervisor")),
+                    ("Durée", f"{float(item.get('hours') or 0):g} heure(s)"),
+                    ("Introduction", item.get("introduction")), ("Activités réalisées", item.get("activities")),
+                    ("Techniques et méthodes", item.get("techniques")), ("Matériel utilisé", item.get("equipment")),
+                    ("Échantillons concernés", item.get("samples")), ("Résultats", item.get("results")),
+                    ("Observations", item.get("observations")), ("Difficultés", item.get("difficulties")),
+                    ("Solutions", item.get("solutions")), ("Compétences / leçons apprises", item.get("lessons")),
+                    ("Analyse critique", item.get("critical_analysis")), ("Comportement professionnel", item.get("professional_behavior")),
+                    ("Questions", item.get("questions")), ("Actions suivantes", item.get("next_actions")),
+                    ("Conclusion de la journée", item.get("conclusion")),
+                ]
+                for label, value in details:
+                    if value not in (None, ""):
+                        gs_story.append(P(f"<b>{label} :</b> {value}"))
+        else:
+            gs_story.append(P("Aucune journée n’a encore été saisie dans le carnet."))
+
+        gs_story += [P("9. ÉCHANTILLONS ET TRAVAUX ASSOCIÉS", "XH1")]
+        if all_samples:
+            sr = [[P("<b>Code</b>","XSmall"),P("<b>Date</b>","XSmall"),P("<b>Localité / parcelle</b>","XSmall"),P("<b>Type / profondeur</b>","XSmall"),P("<b>Préparation / analyses</b>","XSmall"),P("<b>Résultats / interprétation</b>","XSmall")]]
+            for x in all_samples:
+                sr.append([P(x.get("sample_code"),"XSmall"),P(fmt_date(x.get("sample_date")),"XSmall"),P(f"{x.get('locality') or ''} / {x.get('parcel') or ''}","XSmall"),P(f"{x.get('sample_type') or ''} / {x.get('depth') or ''}","XSmall"),P(f"{x.get('preparation') or ''} / {x.get('analyses') or ''}","XSmall"),P(f"{x.get('result_summary') or ''} {x.get('interpretation') or ''}","XSmall")])
+            stbl = Table(sr, colWidths=[1.8*cm,1.8*cm,2.7*cm,2.2*cm,3.2*cm,3.1*cm], repeatRows=1)
+            stbl.setStyle(TableStyle([("GRID",(0,0),(-1,-1),.4,BORDER),("BACKGROUND",(0,0),(-1,0),GREEN_100),("VALIGN",(0,0),(-1,-1),"TOP")]))
+            gs_story += [stbl]
+            for x in all_samples:
+                gs_story += [P(f"<b>Fiche détaillée — {x.get('sample_code') or 'Échantillon sans code'}</b>", "XH2"),
+                             P(f"Localité : {x.get('locality') or '—'} · Parcelle : {x.get('parcel') or '—'} · GPS : {x.get('gps') or '—'}"),
+                             P(f"Date : {fmt_date(x.get('sample_date'))} · Profondeur : {x.get('depth') or '—'} · Culture : {x.get('crop') or '—'} · Type : {x.get('sample_type') or '—'}"),
+                             P(f"Aspect / description : {x.get('appearance') or '—'}"), P(f"Préparation : {x.get('preparation') or '—'}"),
+                             P(f"Analyses prévues / réalisées : {x.get('analyses') or '—'}"), P(f"Résumé des résultats : {x.get('result_summary') or '—'}"),
+                             P(f"Interprétation : {x.get('interpretation') or '—'}"), P(f"Remarques : {x.get('remarks') or '—'}")]
+        else: gs_story.append(P("Aucun échantillon enregistré."))
+
+        gs_story += [P("10. MATÉRIEL, ÉQUIPEMENTS ET APPRENTISSAGES TECHNIQUES", "XH1")]
+        if all_equipment:
+            for x in all_equipment:
+                gs_story += [P(f"<b>{x.get('name') or 'Équipement'} — {x.get('category') or 'Catégorie non précisée'}</b>","XH2"),
+                             P(f"Fonction : {x.get('function') or '—'}"), P(f"Principe : {x.get('principle') or '—'}"),
+                             P(f"Sécurité : {x.get('safety') or '—'}"), P(f"Observations : {x.get('observations') or '—'}"),
+                             P(f"Apprentissage déclaré : {'Oui' if x.get('learned') else 'Non'}")]
+        else: gs_story.append(P("Aucun équipement documenté."))
+
+        gs_story += [P("11. COMPÉTENCES ACQUISES ET AUTOÉVALUATION", "XH1")]
+        if all_skills:
+            kr = [[P("<b>Compétence</b>","XSmall"),P("<b>Catégorie</b>","XSmall"),P("<b>Niveau</b>","XSmall"),P("<b>Preuve / notes</b>","XSmall")]]
+            for x in all_skills: kr.append([P(x.get("skill"),"XSmall"),P(x.get("category"),"XSmall"),P(x.get("level"),"XSmall"),P(f"{x.get('evidence') or ''} {x.get('notes') or ''}","XSmall")])
+            kt = Table(kr, colWidths=[4.0*cm,2.7*cm,2.4*cm,5.7*cm], repeatRows=1)
+            kt.setStyle(TableStyle([("GRID",(0,0),(-1,-1),.4,BORDER),("BACKGROUND",(0,0),(-1,0),GREEN_100),("VALIGN",(0,0),(-1,-1),"TOP")]))
+            gs_story += [kt]
+        else: gs_story.append(P("Aucune compétence enregistrée."))
+
+        gs_story += [P("12. PHOTOGRAPHIES ET ILLUSTRATIONS DU CARNET", "XH1")]
+        if all_photos:
+            for photo in all_photos:
+                gs_story.append(P(f"{fmt_date(photo.get('photo_date'))} — {photo.get('title') or photo.get('filename') or 'Photo du stage'}", "XH2"))
+                if photo.get("caption"): gs_story.append(P(photo.get("caption")))
+                if photo.get("data"):
+                    try: gs_story += [RawPhotoFlowable(photo["data"], max_width=10*cm, max_height=7*cm), Spacer(1,.2*cm)]
+                    except Exception: gs_story.append(P("Image enregistrée dans le carnet, mais impossible à intégrer au PDF."))
+        else: gs_story.append(P("Aucune photographie enregistrée."))
+
+        gs_story += [P("13. DOCUMENTS, NOTES ET RÉFÉRENCES", "XH1")]
+        if all_documents:
+            dr = [[P("<b>Date</b>","XSmall"),P("<b>Titre</b>","XSmall"),P("<b>Type</b>","XSmall"),P("<b>Référence / notes</b>","XSmall")]]
+            for x in all_documents: dr.append([P(fmt_date(x.get("doc_date")),"XSmall"),P(x.get("title"),"XSmall"),P(x.get("doc_type"),"XSmall"),P(f"{x.get('reference') or ''} {x.get('notes') or ''}","XSmall")])
+            dt = Table(dr, colWidths=[2.2*cm,4.1*cm,2.6*cm,5.9*cm], repeatRows=1)
+            dt.setStyle(TableStyle([("GRID",(0,0),(-1,-1),.4,BORDER),("BACKGROUND",(0,0),(-1,0),GREEN_100),("VALIGN",(0,0),(-1,-1),"TOP")]))
+            gs_story += [dt]
+        else: gs_story.append(P("Aucun document ou référence enregistré."))
+
+        gs_story += [P("14. PLANNING, TÂCHES ET SUIVI", "XH1")]
+        if all_planning:
+            pr = [[P("<b>Date</b>","XSmall"),P("<b>Tâche</b>","XSmall"),P("<b>Catégorie / priorité</b>","XSmall"),P("<b>Statut</b>","XSmall"),P("<b>Lieu / notes</b>","XSmall")]]
+            for x in all_planning: pr.append([P(fmt_date(x.get("task_date")),"XSmall"),P(x.get("title"),"XSmall"),P(f"{x.get('category') or ''} / {x.get('priority') or ''}","XSmall"),P(x.get("status"),"XSmall"),P(f"{x.get('location') or ''} {x.get('notes') or ''}","XSmall")])
+            pt = Table(pr, colWidths=[2.0*cm,3.5*cm,3.1*cm,2.1*cm,4.1*cm], repeatRows=1)
+            pt.setStyle(TableStyle([("GRID",(0,0),(-1,-1),.4,BORDER),("BACKGROUND",(0,0),(-1,0),GREEN_100),("VALIGN",(0,0),(-1,-1),"TOP")]))
+            gs_story += [pt]
+        else: gs_story.append(P("Aucune tâche de planning enregistrée."))
+
+        gs_story += [P("15. INCIDENTS, PRÉCAUTIONS ET MESURES PRÉVENTIVES", "XH1")]
+        if all_incidents:
+            for x in all_incidents:
+                gs_story += [P(f"<b>{fmt_date(x.get('incident_date'))} — {x.get('title') or 'Événement'}</b>","XH2"),
+                             P(f"Type / gravité / lieu : {x.get('type') or '—'} / {x.get('severity') or '—'} / {x.get('location') or '—'}"),
+                             P(f"Description : {x.get('description') or '—'}"),P(f"Mesures immédiates : {x.get('immediate_actions') or '—'}"),
+                             P(f"Prévention : {x.get('prevention') or '—'}"),P(f"Déclaré à : {x.get('declared_to') or '—'}"),
+                             P(f"État : {'Clôturé' if x.get('closed') else 'En cours / non clôturé'}")]
+        else: gs_story.append(P("Aucun incident enregistré dans le carnet."))
+
+        gs_story += [P("16. PROTOCOLES ET PROCÉDURES CONSULTÉS", "XH1")]
+        if all_protocols:
+            for x in all_protocols:
+                gs_story += [P(f"<b>{x.get('title') or 'Protocole'} — {x.get('category') or 'Catégorie non précisée'}</b>","XH2"),
+                             P(f"Objectif : {x.get('objective') or '—'}"),P(f"Principe : {x.get('principle') or '—'}"),
+                             P(f"Matériel : {x.get('materials') or '—'}"),P(f"Étapes : {x.get('steps') or '—'}"),
+                             P(f"Précautions : {x.get('precautions') or '—'}"),P(f"Contrôle qualité : {x.get('quality_control') or '—'}"),
+                             P(f"Références : {x.get('references') or '—'}"),P(f"Notes : {x.get('notes') or '—'}")]
+        else: gs_story.append(P("Aucun protocole enregistré."))
+
+        gs_story += [P("17. CONTACTS ET ENCADREMENT", "XH1")]
+        if all_contacts:
+            cr = [[P("<b>Nom</b>","XSmall"),P("<b>Rôle / service</b>","XSmall"),P("<b>Contact</b>","XSmall"),P("<b>Notes</b>","XSmall")]]
+            for x in all_contacts: cr.append([P(x.get("name"),"XSmall"),P(f"{x.get('role') or ''} / {x.get('service') or ''}","XSmall"),P(f"{x.get('phone') or ''} {x.get('email') or ''}","XSmall"),P(x.get("notes"),"XSmall")])
+            ct = Table(cr, colWidths=[3.2*cm,4.0*cm,4.0*cm,3.6*cm], repeatRows=1)
+            ct.setStyle(TableStyle([("GRID",(0,0),(-1,-1),.4,BORDER),("BACKGROUND",(0,0),(-1,0),GREEN_100),("VALIGN",(0,0),(-1,-1),"TOP")]))
+            gs_story += [ct]
+        else: gs_story.append(P("Aucun contact supplémentaire enregistré."))
+
+        add_chapter("18. CONCLUSION GÉNÉRALE", g.get("general_conclusion"))
+        add_chapter("19. RECOMMANDATIONS ET PERSPECTIVES", g.get("recommendations"))
         gs_story += [Spacer(1, .4*cm), P("Signature de l’étudiant : __________________________________________", "XBody"), P("Visa de l’encadreur : ______________________________________________", "XBody")]
         general_doc.build(gs_story, onFirstPage=pdf_footer, onLaterPages=pdf_footer)
         return buf_general.getvalue()
@@ -1885,90 +2013,13 @@ elif page == "Rapport PDF":
     else:
         st.info("Aucune journée disponible.")
 
-    # -------- Mensuel --------
-    st.markdown("### 📊 Rapport mensuel")
-    months = sorted(set(
-        [r["log_date"][:7] for r in logs if r["log_date"]] + [date.today().strftime("%Y-%m")]
-    ), reverse=True)
-    month = st.selectbox("Mois à exporter", months, format_func=month_label, key="pdf_month_choice")
-
-    monthly_exists = bool(db_exec("SELECT id FROM monthly_logs WHERE month=?", (month,), fetch=True))
-    if not monthly_exists:
-        st.warning("Le texte personnalisé de ce mois n'est pas encore enregistré. Le PDF utilisera des textes par défaut pour les parties manquantes.")
-
-    monthly_photo_count = len(db_exec("""
-        SELECT p.id
-        FROM photos p
-        LEFT JOIN daily_logs d ON d.id=p.log_id
-        WHERE substr(d.log_date,1,7)=?
-           OR substr(p.photo_date,1,7)=?
-    """, (month, month), fetch=True))
-    st.info(f"📷 {monthly_photo_count} photo(s) trouvée(s) pour {month_label(month)} et intégrées au PDF.")
-
-    monthly_pdf = make_monthly_pdf(month)
-    st.download_button(
-        "⬇️ Télécharger le rapport mensuel PDF",
-        data=monthly_pdf,
-        file_name=f"rapport_mensuel_{month}.pdf",
-        mime="application/pdf",
-        type="primary",
-        use_container_width=True
-    )
-
-    # -------- Édition du rapport mensuel --------
-    st.markdown("### ✍️ Préparer le contenu du rapport mensuel")
-    existing = db_exec("SELECT * FROM monthly_logs WHERE month=?", (month,), fetch=True)
-    m = dict(existing[0]) if existing else {}
-
-    with st.form("monthly_edit_form"):
-        introduction = st.text_area("Introduction", m.get("introduction",""), height=130)
-        summary = st.text_area("Synthèse générale", m.get("summary",""), height=130)
-        activities = st.text_area("Activités réalisées", m.get("activities",""), height=130)
-        analyses_txt = st.text_area("Analyses et travaux scientifiques", m.get("analyses",""), height=120)
-        fieldwork = st.text_area("Travaux de terrain", m.get("fieldwork",""), height=110)
-        skills_txt = st.text_area("Compétences acquises", m.get("skills",""), height=110)
-        results = st.text_area("Résultats et apports", m.get("results",""), height=110)
-        difficulties = st.text_area("Difficultés", m.get("difficulties",""), height=90)
-        solutions = st.text_area("Solutions / améliorations", m.get("solutions",""), height=90)
-        lessons = st.text_area("Bilan personnel", m.get("lessons",""), height=110)
-        objectives_next = st.text_area("Objectifs du mois suivant", m.get("objectives_next",""), height=100)
-        conclusion = st.text_area("Conclusion générale", m.get("conclusion",""), height=130)
-        supervisor_comment = st.text_area("Observation de l'encadreur", m.get("supervisor_comment",""), height=90)
-
-        if st.form_submit_button("💾 Enregistrer le rapport mensuel", type="primary"):
-            now = datetime.now().isoformat(timespec="seconds")
-            if m:
-                db_exec("""
-                    UPDATE monthly_logs SET introduction=?,summary=?,activities=?,analyses=?,
-                    fieldwork=?,skills=?,results=?,difficulties=?,solutions=?,lessons=?,
-                    objectives_next=?,conclusion=?,supervisor_comment=?,updated_at=?
-                    WHERE month=?
-                """, (
-                    introduction,summary,activities,analyses_txt,fieldwork,skills_txt,results,
-                    difficulties,solutions,lessons,objectives_next,conclusion,supervisor_comment,now,month
-                ))
-            else:
-                db_exec("""
-                    INSERT INTO monthly_logs
-                    (month,introduction,summary,activities,analyses,fieldwork,skills,results,
-                     difficulties,solutions,lessons,objectives_next,conclusion,supervisor_comment,
-                     created_at,updated_at)
-                    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-                """, (
-                    month,introduction,summary,activities,analyses_txt,fieldwork,skills_txt,results,
-                    difficulties,solutions,lessons,objectives_next,conclusion,supervisor_comment,now,now
-                ))
-            audit("Enregistrement rapport mensuel", month)
-            st.success("Contenu mensuel enregistré.")
-            st.rerun()
-
 # ============================================================
 # ANALYSES
 # ============================================================
 
 elif page == "Analyses":
-    st.markdown('<div class="section-title">🧪 Analyses de sols</div>', unsafe_allow_html=True)
-    st.caption("Documente ici ce que tu observes. Les méthodes précises doivent être confirmées par le personnel du laboratoire.")
+    st.markdown('<div class="section-title">🧪 Travaux scientifiques & analyses</div>', unsafe_allow_html=True)
+    st.caption("Documente les travaux scientifiques, techniques ou analytiques réalisés pendant ton immersion, quel que soit le service ou l’unité d’accueil.")
 
     rows = db_exec("SELECT * FROM analyses ORDER BY analysis_date DESC,id DESC", fetch=True)
     mode = st.radio("Action", ["Ajouter","Modifier","Supprimer"], horizontal=True)
