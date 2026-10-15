@@ -417,7 +417,7 @@ p, div, span, label, td, th { overflow-wrap:anywhere; }
 MIGRATION_TABLES = [
     "profile", "daily_logs", "monthly_logs", "photos", "samples", "analyses",
     "equipment", "skills", "contacts", "documents", "planning", "incidents",
-    "protocols", "audit"
+    "protocols", "audit", "internship_periods", "general_report_settings"
 ]
 
 def _migration_pg_conn():
@@ -691,6 +691,14 @@ def init_db():
             analyses TEXT, fieldwork TEXT, planning_review TEXT, skills TEXT, professional_behavior TEXT, results TEXT,
             difficulties TEXT, solutions TEXT, lessons TEXT, critical_analysis TEXT, objectives_next TEXT, conclusion TEXT,
             supervisor_comment TEXT, created_at TEXT, updated_at TEXT)""",
+        """CREATE TABLE IF NOT EXISTS internship_periods (
+            id BIGSERIAL PRIMARY KEY, title TEXT NOT NULL, start_date TEXT NOT NULL, end_date TEXT NOT NULL,
+            supervisor TEXT, objectives TEXT, activities TEXT, methods TEXT, results TEXT, skills TEXT,
+            difficulties TEXT, conclusion TEXT, created_at TEXT, updated_at TEXT)""",
+        """CREATE TABLE IF NOT EXISTS general_report_settings (
+            id INTEGER PRIMARY KEY CHECK(id=1), acknowledgements TEXT, structure_presentation TEXT,
+            context TEXT, problem_statement TEXT, methodology TEXT, general_assessment TEXT,
+            general_conclusion TEXT, recommendations TEXT, updated_at TEXT)""",
         """CREATE TABLE IF NOT EXISTS photos (
             id BIGSERIAL PRIMARY KEY, log_id BIGINT REFERENCES daily_logs(id) ON DELETE CASCADE, photo_date TEXT,
             title TEXT, caption TEXT, category TEXT, filename TEXT, mime_type TEXT, data BYTEA NOT NULL, created_at TEXT)""",
@@ -756,6 +764,13 @@ def init_db():
         db_exec("""INSERT INTO profile
             (id, student_name, formation, level, institution, host_structure, service, supervisor, start_date, end_date, academic_year, objectives, presentation, updated_at)
             VALUES (1, '', 'DSTAAN', 'L2', '', 'ISRA / CRA Saint-Louis', 'Laboratoire de pédologie', '', '', '', '', '', '', %s)""",
+            (datetime.now().isoformat(timespec="seconds"),))
+
+    if not db_exec("SELECT id FROM general_report_settings WHERE id=1", fetch=True):
+        db_exec("""INSERT INTO general_report_settings
+            (id, acknowledgements, structure_presentation, context, problem_statement, methodology,
+             general_assessment, general_conclusion, recommendations, updated_at)
+            VALUES (1,'','','','','','','','','%s')""",
             (datetime.now().isoformat(timespec="seconds"),))
 
     default_skills = [
@@ -1688,6 +1703,166 @@ elif page == "Rapport PDF":
         doc.build(story, onFirstPage=pdf_footer, onLaterPages=pdf_footer)
 
         return buf.getvalue()
+
+    # -------- Rapport général de stage, organisé par périodes / services --------
+    st.markdown("### 🏛️ Rapport général de stage — structure par périodes et services")
+    st.caption("Définis plusieurs étapes successives du stage : laboratoire de pédologie, sélection végétale, journées avec l’encadreur, terrain, etc. Le rapport général rassemble ces périodes et les journaux quotidiens correspondants.")
+
+    periods = [dict(r) for r in db_exec("SELECT * FROM internship_periods ORDER BY start_date,id", fetch=True)]
+    period_mode = st.radio("Gestion des périodes", ["Ajouter une période", "Modifier une période", "Supprimer une période"], horizontal=True, key="period_mode")
+    chosen_period = None
+    if period_mode != "Ajouter une période" and periods:
+        period_labels = {f"{fmt_date(x['start_date'])} – {fmt_date(x['end_date'])} · {x['title']} · ID {x['id']}": x['id'] for x in periods}
+        period_choice = st.selectbox("Période à gérer", list(period_labels), key="period_manage_choice")
+        chosen_period = next((x for x in periods if x['id'] == period_labels[period_choice]), None)
+    elif period_mode != "Ajouter une période":
+        st.info("Aucune période n’est enregistrée pour le moment.")
+
+    if period_mode == "Supprimer une période" and chosen_period:
+        st.warning("Cette action supprime uniquement la fiche de période, pas les journées du journal quotidien.")
+        if st.button("🗑️ Supprimer cette période", key="delete_period_btn"):
+            db_exec("DELETE FROM internship_periods WHERE id=?", (chosen_period['id'],))
+            audit("Suppression période de stage", str(chosen_period['id']))
+            st.success("Période supprimée.")
+            st.rerun()
+    elif period_mode != "Supprimer une période":
+        cp = chosen_period or {}
+        with st.form("internship_period_form"):
+            pc1, pc2 = st.columns(2)
+            with pc1:
+                period_title = st.text_input("Sous-structure / période *", cp.get("title", "Laboratoire de pédologie"), placeholder="Ex. Laboratoire de pédologie")
+                period_start = st.date_input("Date de début de la période", value=datetime.strptime(cp['start_date'], "%Y-%m-%d").date() if cp.get('start_date') else date.today(), key="period_start_date")
+                period_end = st.date_input("Date de fin de la période", value=datetime.strptime(cp['end_date'], "%Y-%m-%d").date() if cp.get('end_date') else date.today(), key="period_end_date")
+                period_supervisor = st.text_input("Encadreur de cette période", cp.get("supervisor", ""))
+            with pc2:
+                period_objectives = st.text_area("Objectifs spécifiques", cp.get("objectives", ""), height=100)
+                period_methods = st.text_area("Méthodes / démarche", cp.get("methods", ""), height=100)
+            period_activities = st.text_area("Activités détaillées de la période", cp.get("activities", ""), height=130)
+            period_results = st.text_area("Résultats et observations", cp.get("results", ""), height=100)
+            period_skills = st.text_area("Compétences et connaissances acquises", cp.get("skills", ""), height=90)
+            period_difficulties = st.text_area("Difficultés et solutions", cp.get("difficulties", ""), height=90)
+            period_conclusion = st.text_area("Bilan de la période", cp.get("conclusion", ""), height=90)
+            save_period = st.form_submit_button("💾 Enregistrer la période", type="primary")
+        if save_period:
+            if not period_title.strip():
+                st.error("Le nom de la période est obligatoire.")
+            elif period_end < period_start:
+                st.error("La date de fin doit être postérieure ou égale à la date de début.")
+            else:
+                now = datetime.now().isoformat(timespec="seconds")
+                values = (period_title.strip(), period_start.isoformat(), period_end.isoformat(), period_supervisor,
+                          period_objectives, period_activities, period_methods, period_results, period_skills,
+                          period_difficulties, period_conclusion, now)
+                if cp.get("id"):
+                    db_exec("""UPDATE internship_periods SET title=?,start_date=?,end_date=?,supervisor=?,objectives=?,activities=?,methods=?,results=?,skills=?,difficulties=?,conclusion=?,updated_at=? WHERE id=?""", values + (cp['id'],))
+                    audit("Modification période de stage", period_title)
+                else:
+                    db_exec("""INSERT INTO internship_periods (title,start_date,end_date,supervisor,objectives,activities,methods,results,skills,difficulties,conclusion,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""", values[:-1] + (now, now))
+                    audit("Création période de stage", period_title)
+                st.success("Période enregistrée.")
+                st.rerun()
+
+    # Informations propres au rapport d'étude général, modifiables par l'étudiant.
+    settings_rows = db_exec("SELECT * FROM general_report_settings WHERE id=1", fetch=True)
+    gs = dict(settings_rows[0]) if settings_rows else {}
+    with st.expander("📝 Préparer les chapitres généraux du rapport d’étude", expanded=False):
+        st.info("La présentation institutionnelle ci-dessous est à vérifier et à personnaliser selon les informations officielles communiquées par le CRA/ISRA et ton encadreur. Aucun détail institutionnel non vérifié n’est imposé.")
+        with st.form("general_report_settings_form"):
+            acknowledgements = st.text_area("Remerciements", gs.get("acknowledgements", ""), height=90)
+            structure_presentation = st.text_area("Présentation du CRA/ISRA et de la structure d’accueil", gs.get("structure_presentation", ""), height=160, placeholder="Historique, missions, organisation, implantation et rôle du service d’accueil — à renseigner à partir des sources officielles.")
+            context = st.text_area("Contexte et justification du stage", gs.get("context", ""), height=110)
+            problem_statement = st.text_area("Problématique / question directrice", gs.get("problem_statement", ""), height=100)
+            methodology = st.text_area("Démarche méthodologique générale", gs.get("methodology", ""), height=120)
+            general_assessment = st.text_area("Bilan transversal des apprentissages", gs.get("general_assessment", ""), height=110)
+            general_conclusion = st.text_area("Conclusion générale", gs.get("general_conclusion", ""), height=120)
+            recommendations = st.text_area("Recommandations / perspectives", gs.get("recommendations", ""), height=110)
+            if st.form_submit_button("💾 Enregistrer les chapitres généraux", type="primary"):
+                now = datetime.now().isoformat(timespec="seconds")
+                db_exec("""UPDATE general_report_settings SET acknowledgements=?,structure_presentation=?,context=?,problem_statement=?,methodology=?,general_assessment=?,general_conclusion=?,recommendations=?,updated_at=? WHERE id=1""",
+                        (acknowledgements, structure_presentation, context, problem_statement, methodology, general_assessment, general_conclusion, recommendations, now))
+                audit("Mise à jour chapitres du rapport général")
+                st.success("Chapitres généraux enregistrés.")
+                st.rerun()
+
+    def make_general_report_pdf():
+        pp = profile()
+        settings_data = db_exec("SELECT * FROM general_report_settings WHERE id=1", fetch=True)
+        g = dict(settings_data[0]) if settings_data else {}
+        period_rows = [dict(x) for x in db_exec("SELECT * FROM internship_periods ORDER BY start_date,id", fetch=True)]
+        all_logs = [dict(x) for x in db_exec("SELECT * FROM daily_logs ORDER BY log_date,id", fetch=True)]
+        all_analyses = [dict(x) for x in db_exec("SELECT * FROM analyses ORDER BY analysis_date,id", fetch=True)]
+        all_samples = [dict(x) for x in db_exec("SELECT * FROM samples ORDER BY sample_date,id", fetch=True)]
+        total_hours = sum(float(x.get("hours") or 0) for x in all_logs)
+        buf_general = io.BytesIO()
+        general_doc = SimpleDocTemplate(buf_general, pagesize=A4, rightMargin=1.7*cm, leftMargin=1.7*cm, topMargin=1.7*cm, bottomMargin=1.6*cm)
+        gs_story = [Spacer(1, 2.0*cm), P("RAPPORT GÉNÉRAL DE STAGE", "XCover"),
+                    P("Rapport d’étude et d’immersion professionnelle", "XSubtitle"), Spacer(1, .8*cm),
+                    P("ISRA / CRA SAINT-LOUIS", "XCover"), Spacer(1, .4*cm)]
+        cover = [[P("<b>Étudiant</b>","XSmall"), P(pp.get("student_name"),"XSmall")],
+                 [P("<b>Formation</b>","XSmall"), P(f"{pp.get('formation','')} — {pp.get('level','')}","XSmall")],
+                 [P("<b>Établissement</b>","XSmall"), P(pp.get("institution"),"XSmall")],
+                 [P("<b>Structure d’accueil</b>","XSmall"), P(pp.get("host_structure") or "ISRA / CRA Saint-Louis","XSmall")],
+                 [P("<b>Période globale</b>","XSmall"), P(f"{fmt_date(pp.get('start_date'))} au {fmt_date(pp.get('end_date'))}","XSmall")],
+                 [P("<b>Encadreur principal</b>","XSmall"), P(pp.get("supervisor"),"XSmall")]]
+        cover_table = Table(cover, colWidths=[5.0*cm, 10.0*cm], hAlign="CENTER")
+        cover_table.setStyle(TableStyle([("GRID",(0,0),(-1,-1),.5,BORDER),("BACKGROUND",(0,0),(0,-1),GREEN_50),("VALIGN",(0,0),(-1,-1),"TOP"),("LEFTPADDING",(0,0),(-1,-1),8),("RIGHTPADDING",(0,0),(-1,-1),8),("TOPPADDING",(0,0),(-1,-1),7),("BOTTOMPADDING",(0,0),(-1,-1),7)]))
+        gs_story += [cover_table, Spacer(1, 1.0*cm), P("Année académique : " + str(pp.get("academic_year") or "à préciser"), "XSubtitle"), PageBreak()]
+        def add_chapter(title, body):
+            gs_story.extend([P(title, "XH1"), P(body or "À compléter à partir des informations validées.")])
+        add_chapter("REMERCIEMENTS", g.get("acknowledgements"))
+        add_chapter("INTRODUCTION GÉNÉRALE", g.get("context") or pp.get("presentation"))
+        add_chapter("1. PRÉSENTATION DE LA STRUCTURE D’ACCUEIL", g.get("structure_presentation"))
+        add_chapter("2. CONTEXTE ET JUSTIFICATION DU STAGE", g.get("context"))
+        add_chapter("3. PROBLÉMATIQUE ET OBJECTIFS", ("Problématique :\n" + (g.get("problem_statement") or "À préciser.")) + "\nObjectifs du stage :\n" + (pp.get("objectives") or "À préciser."))
+        add_chapter("4. DÉMARCHE MÉTHODOLOGIQUE GÉNÉRALE", g.get("methodology"))
+        gs_story += [P("5. DÉROULEMENT DU STAGE PAR PÉRIODES / SOUS-STRUCTURES", "XH1"), P("Chaque période constitue une partie autonome du rapport. Les entrées du journal quotidien comprises dans les dates de la période sont reprises pour assurer la traçabilité.")]
+        if not period_rows:
+            gs_story.append(P("Aucune période n’a encore été définie. Ajoute par exemple : 15 jours au laboratoire de pédologie, 7 jours au laboratoire de sélection végétale, puis une période d’accompagnement avec l’encadreur."))
+        for i, per in enumerate(period_rows, 1):
+            gs_story += [P(f"5.{i}. {per.get('title') or 'Période de stage'}", "XH2"),
+                         P(f"<b>Dates :</b> {fmt_date(per.get('start_date'))} – {fmt_date(per.get('end_date'))}    <b>Encadreur :</b> {per.get('supervisor') or pp.get('supervisor') or 'À préciser'}"),
+                         P("Objectifs spécifiques", "XH2"), P(per.get("objectives")),
+                         P("Activités réalisées", "XH2"), P(per.get("activities")),
+                         P("Méthodes et démarche", "XH2"), P(per.get("methods")),
+                         P("Résultats et observations", "XH2"), P(per.get("results")),
+                         P("Compétences acquises", "XH2"), P(per.get("skills")),
+                         P("Difficultés et solutions", "XH2"), P(per.get("difficulties")),
+                         P("Bilan de la période", "XH2"), P(per.get("conclusion"))]
+            related = [x for x in all_logs if x.get("log_date") and per.get("start_date") <= x["log_date"] <= per.get("end_date")]
+            if related:
+                gs_story.append(P("Journal des activités de cette période", "XH2"))
+                lr = [[P("<b>Date</b>","XSmall"), P("<b>Activité / titre</b>","XSmall"), P("<b>Lieu</b>","XSmall"), P("<b>Durée</b>","XSmall")]]
+                for item in related:
+                    lr.append([P(fmt_date(item.get("log_date")),"XSmall"), P(item.get("title"),"XSmall"), P(item.get("location"),"XSmall"), P(f"{float(item.get('hours') or 0):g} h","XSmall")])
+                ltab = Table(lr, colWidths=[2.3*cm, 6.3*cm, 4.0*cm, 2.0*cm], repeatRows=1)
+                ltab.setStyle(TableStyle([("GRID",(0,0),(-1,-1),.4,BORDER),("BACKGROUND",(0,0),(-1,0),GREEN_100),("VALIGN",(0,0),(-1,-1),"TOP")]))
+                gs_story += [ltab, Spacer(1, .2*cm)]
+        add_chapter("6. BILAN TRANSVERSAL DES APPRENTISSAGES", g.get("general_assessment"))
+        gs_story += [P("7. SYNTHÈSE DES DONNÉES DU CARNET", "XH1")]
+        summary_table = Table([[P("<b>Journées</b>","XSmall"),P("<b>Heures cumulées</b>","XSmall"),P("<b>Analyses</b>","XSmall"),P("<b>Échantillons</b>","XSmall")],
+                               [P(str(len(all_logs)),"XSmall"),P(f"{total_hours:.1f}","XSmall"),P(str(len(all_analyses)),"XSmall"),P(str(len(all_samples)),"XSmall")]], colWidths=[3.8*cm]*4)
+        summary_table.setStyle(TableStyle([("GRID",(0,0),(-1,-1),.5,BORDER),("BACKGROUND",(0,0),(-1,0),GREEN_100),("ALIGN",(0,0),(-1,-1),"CENTER")]))
+        gs_story += [summary_table]
+        if all_analyses:
+            gs_story += [P("Principales analyses enregistrées", "XH2")]
+            ar = [[P("<b>Date</b>","XSmall"),P("<b>Échantillon</b>","XSmall"),P("<b>Analyse</b>","XSmall"),P("<b>Résultat</b>","XSmall")]]
+            for a in all_analyses:
+                ar.append([P(fmt_date(a.get("analysis_date")),"XSmall"),P(a.get("sample_code"),"XSmall"),P(a.get("analysis_name"),"XSmall"),P(a.get("result"),"XSmall")])
+            art = Table(ar, colWidths=[2.5*cm,3.2*cm,5.2*cm,4.3*cm], repeatRows=1)
+            art.setStyle(TableStyle([("GRID",(0,0),(-1,-1),.4,BORDER),("BACKGROUND",(0,0),(-1,0),GREEN_100),("VALIGN",(0,0),(-1,-1),"TOP")]))
+            gs_story += [art]
+        add_chapter("8. CONCLUSION GÉNÉRALE", g.get("general_conclusion"))
+        add_chapter("9. RECOMMANDATIONS ET PERSPECTIVES", g.get("recommendations"))
+        gs_story += [Spacer(1, .4*cm), P("Signature de l’étudiant : __________________________________________", "XBody"), P("Visa de l’encadreur : ______________________________________________", "XBody")]
+        general_doc.build(gs_story, onFirstPage=pdf_footer, onLaterPages=pdf_footer)
+        return buf_general.getvalue()
+
+    if periods:
+        st.dataframe(pd.DataFrame([{ "Période": x["title"], "Début": fmt_date(x["start_date"]), "Fin": fmt_date(x["end_date"]), "Encadreur": x.get("supervisor", "") } for x in periods]), use_container_width=True, hide_index=True)
+    st.info(f"Le rapport général inclura {len(periods)} période(s), {len(db_exec('SELECT id FROM daily_logs', fetch=True))} journée(s), {len(db_exec('SELECT id FROM analyses', fetch=True))} analyse(s) et les chapitres institutionnels que tu auras renseignés.")
+    general_pdf = make_general_report_pdf()
+    st.download_button("📘 Télécharger le RAPPORT GÉNÉRAL DE STAGE (PDF)", data=general_pdf,
+                       file_name="rapport_general_stage_ISRA_CRA.pdf", mime="application/pdf", type="primary", use_container_width=True)
 
     # -------- Journalier --------
     st.markdown("### 📄 Rapport journalier")
