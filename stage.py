@@ -47,7 +47,8 @@ from typing import Optional, Dict, Any, List
 
 import psycopg
 from psycopg.rows import dict_row
-from psycopg_pool import ConnectionPool
+from psycopg_pool import ConnectionPool, PoolTimeout
+import time
 
 import pandas as pd
 import streamlit as st
@@ -632,23 +633,27 @@ def _pg_settings():
 
 @st.cache_resource(show_spinner=False)
 def get_pool():
-    """Pool PostgreSQL partagé afin d'éviter une connexion réseau à chaque requête."""
+    """Pool PostgreSQL partagé, dimensionné pour les démarrages et reruns Streamlit."""
     cfg = _pg_settings()
     if not cfg["password"]:
         raise RuntimeError(
             "Mot de passe PostgreSQL absent. Ajoute [postgres].password dans les secrets Streamlit."
         )
-    return ConnectionPool(
+
+    pool = ConnectionPool(
         conninfo=None,
-        kwargs={
-            **cfg,
-            "row_factory": dict_row,
-        },
+        kwargs={**cfg, "row_factory": dict_row},
         min_size=1,
-        max_size=4,
-        timeout=10,
-        open=True,
+        max_size=6,
+        timeout=30,
+        max_waiting=24,
+        reconnect_timeout=30,
+        open=False,
     )
+    # Attend que le pool soit initialisé afin d'éviter les premières requêtes
+    # pendant que les connexions PostgreSQL sont encore en cours d'ouverture.
+    pool.open(wait=True, timeout=30)
+    return pool
 
 
 def get_conn():
@@ -660,17 +665,29 @@ def _pg_sql(sql: str) -> str:
 
 
 def db_exec(sql: str, params=(), fetch=False, many=False):
-    """Requête PostgreSQL via le pool de connexions réutilisables."""
-    with get_pool().connection() as conn:
-        with conn.cursor() as cur:
-            sql = _pg_sql(sql)
-            if many:
-                cur.executemany(sql, params)
-            else:
-                cur.execute(sql, params)
-            rows = cur.fetchall() if fetch else None
-        conn.commit()
-        return rows
+    """Requête PostgreSQL via le pool; réessaie brièvement en cas de saturation."""
+    last_error = None
+    for attempt in range(3):
+        try:
+            # Le contexte restitue toujours la connexion au pool, y compris en cas d'erreur.
+            with get_pool().connection(timeout=30) as conn:
+                with conn.cursor() as cur:
+                    statement = _pg_sql(sql)
+                    if many:
+                        cur.executemany(statement, params)
+                    else:
+                        cur.execute(statement, params)
+                    rows = cur.fetchall() if fetch else None
+                conn.commit()
+                return rows
+        except PoolTimeout as exc:
+            last_error = exc
+            if attempt < 2:
+                time.sleep(1.0 * (attempt + 1))
+    raise RuntimeError(
+        "Le pool PostgreSQL est saturé : aucune connexion disponible après plusieurs tentatives. "
+        "Vérifie que les autres versions de l'application sont arrêtées et que Supabase accepte les connexions."
+    ) from last_error
 
 
 @st.cache_resource(show_spinner=False)
