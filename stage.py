@@ -1325,8 +1325,8 @@ elif page == "Rapport PDF":
     ))
     styles.add(ParagraphStyle(
         name="XSmall", parent=styles["BodyText"], fontName="Times-Roman",
-        fontSize=12, leading=18, alignment=4, textColor=colors.black,
-        spaceAfter=6, firstLineIndent=.5*cm
+        fontSize=9, leading=11, alignment=4, textColor=colors.black,
+        spaceAfter=2, firstLineIndent=0
     ))
     styles.add(ParagraphStyle(
         name="XCaption", parent=styles["BodyText"], fontName="Times-Italic",
@@ -1365,24 +1365,6 @@ elif page == "Rapport PDF":
                 self.setFont("Times-Roman", 10)
                 self.setFillColor(colors.black)
                 self.drawRightString(A4[0]-2.5*cm, .9*cm, f"Page {self._pageNumber} sur {total}")
-                Canvas.showPage(self)
-            Canvas.save(self)
-
-    class TwentyPageCanvas(NumberedCanvas):
-        """Conserve au plus 20 pages au PDF général, avec une note si abrégé."""
-        MAX_PAGES = 20
-        def save(self):
-            total = len(self._saved_page_states)
-            kept = self._saved_page_states[:self.MAX_PAGES]
-            for state in kept:
-                self.__dict__.update(state)
-                self.setFont("Times-Roman", 10)
-                self.setFillColor(colors.black)
-                self.drawRightString(A4[0]-2.5*cm, .9*cm,
-                                     f"Page {self._pageNumber} sur {min(total, self.MAX_PAGES)}")
-                if total > self.MAX_PAGES and self._pageNumber == self.MAX_PAGES:
-                    self.setFont("Times-Italic", 8)
-                    self.drawString(2.5*cm, .9*cm, "Rapport abrégé pour respecter la limite de 20 pages.")
                 Canvas.showPage(self)
             Canvas.save(self)
 
@@ -1710,19 +1692,16 @@ elif page == "Rapport PDF":
         story.append(P("5. SYNTHÈSE DU CARNET JOURNALIER", "XH1"))
         story.append(P(f"Le carnet contient <b>{len(all_logs)} journée(s)</b> enregistrée(s), pour un total de <b>{total_hours:.1f} heure(s)</b>. Les descriptions détaillées, observations, techniques, difficultés, solutions et conclusions de chaque journée restent consultables dans le carnet et dans les rapports journaliers individuels."))
         if all_logs:
-            rows = [[P("<b>Date</b>", "XSmall"), P("<b>Activités principales</b>", "XSmall"),
-                     P("<b>Résultats / observations essentiels</b>", "XSmall"), P("<b>Durée</b>", "XSmall")]]
-            report_logs = all_logs[-30:]
-            if len(all_logs) > len(report_logs):
-                story.append(P(f"Pour tenir dans un format synthétique, le tableau affiche les 30 journées les plus récentes sur {len(all_logs)}. Le total complet reste comptabilisé ci-dessus."))
-            for item in report_logs:
+            rows = [[P("<b>Date</b>", "XSmall"), P("<b>Activité</b>", "XSmall"),
+                     P("<b>Introduction</b>", "XSmall"), P("<b>Ce que j’ai retenu</b>", "XSmall")]]
+            for item in all_logs:
                 activity = " — ".join(str(v).strip() for v in [item.get("title"), item.get("activities")] if v and str(v).strip())
-                outcome = " — ".join(str(v).strip() for v in [item.get("results"), item.get("observations")] if v and str(v).strip())
                 rows.append([P(fmt_date(item.get("log_date")), "XSmall"), P(activity or "—", "XSmall"),
-                             P(outcome or "—", "XSmall"), P(f"{float(item.get('hours') or 0):g} h", "XSmall")])
-            # Une journée peut contenir beaucoup de texte : autoriser le
-            # découpage d'une ligne évite un LayoutError si elle dépasse une page.
-            tbl = Table(rows, colWidths=[2.1*cm, 5.4*cm, 5.5*cm, 1.5*cm],
+                             P(item.get("introduction") or "—", "XSmall"),
+                             P(item.get("lessons") or "—", "XSmall")])
+            # Les quatre champs utiles sont conservés pour toutes les journées,
+            # avec une typographie compacte et des lignes fractionnables.
+            tbl = Table(rows, colWidths=[1.8*cm, 4.3*cm, 4.5*cm, 4.5*cm],
                         repeatRows=1, hAlign="LEFT", splitByRow=1, splitInRow=1)
             tbl.setStyle(TableStyle([("GRID",(0,0),(-1,-1),.4,BORDER),
                                      ("BACKGROUND",(0,0),(-1,0),GREEN_100),
@@ -1741,9 +1720,9 @@ elif page == "Rapport PDF":
         if all_photos:
             photo_rows = []
             photo_cells = []
-            report_photos = all_photos[:12]
+            report_photos = all_photos[:10]
             if len(all_photos) > len(report_photos):
-                story.append(P(f"12 photographies au maximum sont présentées ici ({len(all_photos)} enregistrées au total). Les photos restent toutes disponibles dans l’application."))
+                story.append(P(f"10 photographies sont présentées dans ce rapport. Les {len(all_photos) - 10} autres restent disponibles dans l’application."))
             for index, ph in enumerate(report_photos, 1):
                 raw = ph.get("data")
                 caption = ph.get("caption") or ph.get("filename") or f"Photo {index}"
@@ -1778,7 +1757,7 @@ elif page == "Rapport PDF":
         if all_analyses:
             story.append(P("Principaux travaux analytiques", "XH2"))
             arows = [[P("<b>Date</b>", "XSmall"), P("<b>Analyse</b>", "XSmall"), P("<b>Résultat principal</b>", "XSmall")]]
-            for a in all_analyses[:25]:
+            for a in all_analyses:
                 arows.append([P(fmt_date(a.get("analysis_date")), "XSmall"),
                               P(a.get("analysis_name") or "—", "XSmall"),
                               P(a.get("result") or a.get("interpretation") or "—", "XSmall")])
@@ -1791,9 +1770,7 @@ elif page == "Rapport PDF":
         story.append(P("MATÉRIEL ET ÉQUIPEMENTS", "XH1"))
         if all_equipment:
             erows = [[P("<b>Équipement</b>","XSmall"),P("<b>Fonction et principe</b>","XSmall"),P("<b>Sécurité, observations et acquis</b>","XSmall")]]
-            if len(all_equipment) > 20:
-                story.append(P(f"La liste détaillée est limitée aux 20 premiers équipements sur {len(all_equipment)} enregistrés."))
-            for eq in all_equipment[:20]:
+            for eq in all_equipment:
                 erows.append([P(f"{eq.get('name') or '—'}\n{eq.get('category') or ''}","XSmall"),
                               P(f"{eq.get('function') or '—'}\nPrincipe : {eq.get('principle') or '—'}","XSmall"),
                               P(f"Sécurité : {eq.get('safety') or '—'}\nObservations : {eq.get('observations') or '—'}\nMaîtrisé : {'Oui' if eq.get('learned') else 'Non'}","XSmall")])
@@ -1815,7 +1792,9 @@ elif page == "Rapport PDF":
         chapter("9. RECOMMANDATIONS ET PERSPECTIVES", g.get("recommendations"))
         story += [Spacer(1, .4*cm), P("Signature du stagiaire : __________________________________________", "XBody"),
                   P("Visa de l’encadreur : ______________________________________________", "XBody")]
-        doc.build(story, onFirstPage=pdf_footer, onLaterPages=pdf_footer, canvasmaker=TwentyPageCanvas)
+        # Le document garde toutes les journées (sous forme synthétique) et les
+        # chapitres enregistrés. On évite une troncature silencieuse des pages.
+        doc.build(story, onFirstPage=pdf_footer, onLaterPages=pdf_footer, canvasmaker=NumberedCanvas)
         return buf_general.getvalue()
 
     if periods:
