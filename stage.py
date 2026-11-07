@@ -132,6 +132,10 @@ div[data-testid="stMetric"]:hover { transform:translateY(-3px); box-shadow:0 10p
 .dashboard-heading:before,.dashboard-heading:after { content:""; position:absolute; border:1px solid rgba(255,255,255,.18); border-radius:50%; pointer-events:none; }
 .dashboard-heading:before { width:290px;height:290px;right:-70px;top:-140px; }
 .dashboard-heading:after { width:190px;height:190px;right:85px;bottom:-135px; }
+.dashboard-heading:before { animation:hero-orbit 12s linear infinite; }
+@keyframes hero-orbit { from { transform:rotate(0deg) translateX(8px); } to { transform:rotate(360deg) translateX(8px); } }
+.dashboard-kicker { position:relative;z-index:1;display:inline-flex;align-items:center;gap:.55rem;margin-bottom:1.1rem;padding:.5rem .9rem;border:1px solid rgba(255,255,255,.35);border-radius:999px;background:rgba(255,255,255,.12);color:#f0fdf4;font-size:.88rem;font-weight:800;letter-spacing:.13em;text-transform:uppercase; }
+.dashboard-heading:focus-within { outline:2px solid #fff;outline-offset:4px; }
 .dashboard-heading h1 { position:relative; z-index:1; color:#fff !important; text-shadow:0 3px 18px rgba(0,0,0,.16); letter-spacing:-.045em; }
 .dashboard-heading p { position:relative; z-index:1; display:inline-block; margin-top:1rem !important; padding:.65rem 1.2rem; border:1px solid rgba(255,255,255,.36); border-radius:999px; background:rgba(255,255,255,.13); color:#fff; font-weight:700; backdrop-filter:blur(8px); }
 @media (prefers-reduced-motion: reduce) { .dashboard-heading, div[data-testid="stMetric"] { animation:none !important; transition:none !important; } }
@@ -957,7 +961,7 @@ def get_protocols():
 # ============================================================
 
 if page == "Tableau de bord":
-    st.markdown("""<style>.dashboard-heading{text-align:center;padding:1.5rem 0 1rem}.dashboard-heading h1{font-size:clamp(3rem,8vw,6.5rem);line-height:1.05;margin:.2rem 0;color:#14532d;font-weight:900}.dashboard-heading p{font-size:1.4rem;margin:.5rem 0}</style><div class="dashboard-heading"><h1>🏠 Tableau de bord</h1><p>Fin du stage : 06/11/2026</p></div>""", unsafe_allow_html=True)
+    st.markdown("""<style>.dashboard-heading{text-align:center}.dashboard-heading h1{font-size:clamp(3rem,8vw,6.5rem);line-height:1.02;margin:.2rem 0;font-weight:900}.dashboard-heading p{font-size:1.2rem}</style><div class="dashboard-heading"><div class="dashboard-kicker">🌱 ISRA · CRA SAINT-LOUIS</div><h1>Carnet d’immersion</h1><p>L2 DSTAAN · Fin du stage : 06/11/2026</p></div>""", unsafe_allow_html=True)
     st.markdown('<div class="section-subtitle">Vue globale de ton immersion et de ta progression.</div>', unsafe_allow_html=True)
 
     logs = db_exec("SELECT * FROM daily_logs ORDER BY log_date DESC, id DESC", fetch=True)
@@ -1316,29 +1320,29 @@ elif page == "Rapport PDF":
     ))
     styles.add(ParagraphStyle(
         name="XH1", parent=styles["Heading1"], fontName="Times-Bold",
-        fontSize=14, leading=21, textColor=colors.black,
-        spaceBefore=8, spaceAfter=6
+        fontSize=14, leading=17, alignment=TA_CENTER,
+        textColor=colors.black, spaceBefore=5, spaceAfter=3
     ))
     styles.add(ParagraphStyle(
         name="XH2", parent=styles["Heading2"], fontName="Times-Bold",
-        fontSize=13, leading=19.5, textColor=colors.black,
-        spaceBefore=6, spaceAfter=6
+        fontSize=13, leading=16, alignment=TA_CENTER,
+        textColor=colors.black, spaceBefore=4, spaceAfter=2
     ))
     styles.add(ParagraphStyle(
         name="XBody", parent=styles["BodyText"], fontName="Times-Roman",
-        fontSize=12, leading=18, alignment=4, textColor=colors.black,
-        spaceAfter=6, firstLineIndent=.5*cm
+        fontSize=11, leading=14, alignment=4, textColor=colors.black,
+        spaceAfter=3, firstLineIndent=.5*cm
     ))
     styles.add(ParagraphStyle(
         name="XSmall", parent=styles["BodyText"], fontName="Times-Roman",
-        fontSize=9, leading=11, alignment=4, textColor=colors.black,
-        spaceAfter=2, firstLineIndent=0
+        fontSize=9, leading=10, alignment=4, textColor=colors.black,
+        spaceAfter=1, firstLineIndent=0
     ))
     styles.add(ParagraphStyle(
         name="XCaption", parent=styles["BodyText"], fontName="Times-Italic",
         fontSize=12, leading=18, alignment=TA_CENTER, textColor=colors.black,
         wordWrap="CJK", splitLongWords=True,
-        spaceBefore=1, spaceAfter=6
+        spaceBefore=1, spaceAfter=2
     ))
     styles.add(ParagraphStyle(
         name="XCover", parent=styles["Title"], fontName="Times-Bold",
@@ -1354,6 +1358,8 @@ elif page == "Rapport PDF":
         raw = raw.replace("<b>", "@@B_OPEN@@").replace("</b>", "@@B_CLOSE@@")
         safe = clean_html(raw) or "—"
         safe = safe.replace("@@B_OPEN@@", "<b>").replace("@@B_CLOSE@@", "</b>")
+        if style in ("XH1", "XH2"):
+            safe = f"<u>{safe}</u>"
         return Paragraph(safe, styles[style])
 
     class NumberedCanvas(Canvas):
@@ -1379,7 +1385,7 @@ elif page == "Rapport PDF":
         # Cadre fin et constant sur chaque page du rapport.
         canvas.setStrokeColor(colors.HexColor("#166534"))
         canvas.setLineWidth(1.1)
-        canvas.roundRect(1.35*cm, 1.55*cm, A4[0]-2.7*cm, A4[1]-3.1*cm,
+        canvas.roundRect(1.35*cm, 1.55*cm, A4[0]-2.7*cm, A4[1]-3.85*cm,
                          .22*cm, stroke=1, fill=0)
         # En-tête organisation aligné à gauche (aucun logo n’est fourni avec le script).
         canvas.setFont("Times-Roman", 10)
