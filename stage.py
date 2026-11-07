@@ -124,6 +124,11 @@ footer {visibility: hidden;}
 .home-hero { text-align:center; padding: 2.4rem 1.5rem !important; }
 .home-hero h1 { font-size: clamp(3rem, 7vw, 6rem) !important; line-height:1.08; }
 .home-hero p { font-size:1.35rem !important; }
+@keyframes hero-arrive { from {opacity:0; transform:translateY(16px) scale(.985)} to {opacity:1; transform:translateY(0) scale(1)} }
+.dashboard-heading { animation: hero-arrive .8s ease-out both; }
+div[data-testid="stMetric"] { transition: transform .2s ease, box-shadow .2s ease; }
+div[data-testid="stMetric"]:hover { transform:translateY(-3px); box-shadow:0 10px 28px rgba(20,83,45,.13); }
+@media (prefers-reduced-motion: reduce) { .dashboard-heading, div[data-testid="stMetric"] { animation:none !important; transition:none !important; } }
 
 .top-brand p {
     margin: .25rem 0 0;
@@ -1363,6 +1368,24 @@ elif page == "Rapport PDF":
                 Canvas.showPage(self)
             Canvas.save(self)
 
+    class TwentyPageCanvas(NumberedCanvas):
+        """Conserve au plus 20 pages au PDF général, avec une note si abrégé."""
+        MAX_PAGES = 20
+        def save(self):
+            total = len(self._saved_page_states)
+            kept = self._saved_page_states[:self.MAX_PAGES]
+            for state in kept:
+                self.__dict__.update(state)
+                self.setFont("Times-Roman", 10)
+                self.setFillColor(colors.black)
+                self.drawRightString(A4[0]-2.5*cm, .9*cm,
+                                     f"Page {self._pageNumber} sur {min(total, self.MAX_PAGES)}")
+                if total > self.MAX_PAGES and self._pageNumber == self.MAX_PAGES:
+                    self.setFont("Times-Italic", 8)
+                    self.drawString(2.5*cm, .9*cm, "Rapport abrégé pour respecter la limite de 20 pages.")
+                Canvas.showPage(self)
+            Canvas.save(self)
+
     def pdf_footer(canvas, doc):
         canvas.saveState()
         # En-tête organisation aligné à gauche (aucun logo n’est fourni avec le script).
@@ -1689,7 +1712,10 @@ elif page == "Rapport PDF":
         if all_logs:
             rows = [[P("<b>Date</b>", "XSmall"), P("<b>Activités principales</b>", "XSmall"),
                      P("<b>Résultats / observations essentiels</b>", "XSmall"), P("<b>Durée</b>", "XSmall")]]
-            for item in all_logs:
+            report_logs = all_logs[-30:]
+            if len(all_logs) > len(report_logs):
+                story.append(P(f"Pour tenir dans un format synthétique, le tableau affiche les 30 journées les plus récentes sur {len(all_logs)}. Le total complet reste comptabilisé ci-dessus."))
+            for item in report_logs:
                 activity = " — ".join(str(v).strip() for v in [item.get("title"), item.get("activities")] if v and str(v).strip())
                 outcome = " — ".join(str(v).strip() for v in [item.get("results"), item.get("observations")] if v and str(v).strip())
                 rows.append([P(fmt_date(item.get("log_date")), "XSmall"), P(activity or "—", "XSmall"),
@@ -1715,7 +1741,10 @@ elif page == "Rapport PDF":
         if all_photos:
             photo_rows = []
             photo_cells = []
-            for index, ph in enumerate(all_photos, 1):
+            report_photos = all_photos[:12]
+            if len(all_photos) > len(report_photos):
+                story.append(P(f"12 photographies au maximum sont présentées ici ({len(all_photos)} enregistrées au total). Les photos restent toutes disponibles dans l’application."))
+            for index, ph in enumerate(report_photos, 1):
                 raw = ph.get("data")
                 caption = ph.get("caption") or ph.get("filename") or f"Photo {index}"
                 caption = str(caption).replace("\n", " ").strip()
@@ -1749,7 +1778,7 @@ elif page == "Rapport PDF":
         if all_analyses:
             story.append(P("Principaux travaux analytiques", "XH2"))
             arows = [[P("<b>Date</b>", "XSmall"), P("<b>Analyse</b>", "XSmall"), P("<b>Résultat principal</b>", "XSmall")]]
-            for a in all_analyses:
+            for a in all_analyses[:25]:
                 arows.append([P(fmt_date(a.get("analysis_date")), "XSmall"),
                               P(a.get("analysis_name") or "—", "XSmall"),
                               P(a.get("result") or a.get("interpretation") or "—", "XSmall")])
@@ -1762,7 +1791,9 @@ elif page == "Rapport PDF":
         story.append(P("MATÉRIEL ET ÉQUIPEMENTS", "XH1"))
         if all_equipment:
             erows = [[P("<b>Équipement</b>","XSmall"),P("<b>Fonction et principe</b>","XSmall"),P("<b>Sécurité, observations et acquis</b>","XSmall")]]
-            for eq in all_equipment:
+            if len(all_equipment) > 20:
+                story.append(P(f"La liste détaillée est limitée aux 20 premiers équipements sur {len(all_equipment)} enregistrés."))
+            for eq in all_equipment[:20]:
                 erows.append([P(f"{eq.get('name') or '—'}\n{eq.get('category') or ''}","XSmall"),
                               P(f"{eq.get('function') or '—'}\nPrincipe : {eq.get('principle') or '—'}","XSmall"),
                               P(f"Sécurité : {eq.get('safety') or '—'}\nObservations : {eq.get('observations') or '—'}\nMaîtrisé : {'Oui' if eq.get('learned') else 'Non'}","XSmall")])
@@ -1784,7 +1815,7 @@ elif page == "Rapport PDF":
         chapter("9. RECOMMANDATIONS ET PERSPECTIVES", g.get("recommendations"))
         story += [Spacer(1, .4*cm), P("Signature du stagiaire : __________________________________________", "XBody"),
                   P("Visa de l’encadreur : ______________________________________________", "XBody")]
-        doc.build(story, onFirstPage=pdf_footer, onLaterPages=pdf_footer, canvasmaker=NumberedCanvas)
+        doc.build(story, onFirstPage=pdf_footer, onLaterPages=pdf_footer, canvasmaker=TwentyPageCanvas)
         return buf_general.getvalue()
 
     if periods:
