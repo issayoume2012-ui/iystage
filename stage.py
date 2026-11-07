@@ -128,6 +128,12 @@ footer {visibility: hidden;}
 .dashboard-heading { animation: hero-arrive .8s ease-out both; }
 div[data-testid="stMetric"] { transition: transform .2s ease, box-shadow .2s ease; }
 div[data-testid="stMetric"]:hover { transform:translateY(-3px); box-shadow:0 10px 28px rgba(20,83,45,.13); }
+.dashboard-heading { position:relative; overflow:hidden; margin:1rem auto 1.6rem; padding:clamp(2rem,6vw,5rem) 1.5rem !important; max-width:1250px; border:1px solid #b7e4c3; border-radius:32px; color:#fff; background:radial-gradient(circle at 88% 15%,rgba(255,255,255,.2),transparent 22%),linear-gradient(135deg,#064e3b 0%,#15803d 52%,#22a447 100%); box-shadow:0 22px 60px rgba(6,78,59,.22); }
+.dashboard-heading:before,.dashboard-heading:after { content:""; position:absolute; border:1px solid rgba(255,255,255,.18); border-radius:50%; pointer-events:none; }
+.dashboard-heading:before { width:290px;height:290px;right:-70px;top:-140px; }
+.dashboard-heading:after { width:190px;height:190px;right:85px;bottom:-135px; }
+.dashboard-heading h1 { position:relative; z-index:1; color:#fff !important; text-shadow:0 3px 18px rgba(0,0,0,.16); letter-spacing:-.045em; }
+.dashboard-heading p { position:relative; z-index:1; display:inline-block; margin-top:1rem !important; padding:.65rem 1.2rem; border:1px solid rgba(255,255,255,.36); border-radius:999px; background:rgba(255,255,255,.13); color:#fff; font-weight:700; backdrop-filter:blur(8px); }
 @media (prefers-reduced-motion: reduce) { .dashboard-heading, div[data-testid="stMetric"] { animation:none !important; transition:none !important; } }
 
 .top-brand p {
@@ -1370,6 +1376,11 @@ elif page == "Rapport PDF":
 
     def pdf_footer(canvas, doc):
         canvas.saveState()
+        # Cadre fin et constant sur chaque page du rapport.
+        canvas.setStrokeColor(colors.HexColor("#166534"))
+        canvas.setLineWidth(1.1)
+        canvas.roundRect(1.35*cm, 1.55*cm, A4[0]-2.7*cm, A4[1]-3.1*cm,
+                         .22*cm, stroke=1, fill=0)
         # En-tête organisation aligné à gauche (aucun logo n’est fourni avec le script).
         canvas.setFont("Times-Roman", 10)
         canvas.setFillColor(colors.black)
