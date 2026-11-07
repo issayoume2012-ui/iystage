@@ -65,6 +65,7 @@ from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle,
     PageBreak, Image as RLImage, KeepTogether, Flowable
 )
+from reportlab.pdfgen.canvas import Canvas
 
 # ============================================================
 # CONFIGURATION
@@ -120,6 +121,9 @@ footer {visibility: hidden;}
     font-size: 2rem;
     font-weight: 800;
 }
+.home-hero { text-align:center; padding: 2.4rem 1.5rem !important; }
+.home-hero h1 { font-size: clamp(3rem, 7vw, 6rem) !important; line-height:1.08; }
+.home-hero p { font-size:1.35rem !important; }
 
 .top-brand p {
     margin: .25rem 0 0;
@@ -942,7 +946,7 @@ def get_protocols():
 # ============================================================
 
 if page == "Tableau de bord":
-    st.markdown('<div class="section-title">🏠 Tableau de bord</div>', unsafe_allow_html=True)
+    st.markdown("""<style>.dashboard-heading{text-align:center;padding:1.5rem 0 1rem}.dashboard-heading h1{font-size:clamp(3rem,8vw,6.5rem);line-height:1.05;margin:.2rem 0;color:#14532d;font-weight:900}.dashboard-heading p{font-size:1.4rem;margin:.5rem 0}</style><div class="dashboard-heading"><h1>🏠 Tableau de bord</h1><p>Fin du stage : 06/11/2026</p></div>""", unsafe_allow_html=True)
     st.markdown('<div class="section-subtitle">Vue globale de ton immersion et de ta progression.</div>', unsafe_allow_html=True)
 
     logs = db_exec("SELECT * FROM daily_logs ORDER BY log_date DESC, id DESC", fetch=True)
@@ -1290,43 +1294,45 @@ elif page == "Rapport PDF":
     BORDER = colors.HexColor("#cfe1d4")
 
     styles.add(ParagraphStyle(
-        name="XTitle", parent=styles["Title"], fontName="Helvetica-Bold",
-        fontSize=19, leading=21, alignment=TA_CENTER, textColor=GREEN_900,
-        spaceAfter=3
+        name="XTitle", parent=styles["Title"], fontName="Times-Bold",
+        fontSize=18, leading=22, alignment=TA_CENTER, textColor=colors.black,
+        spaceAfter=6
     ))
     styles.add(ParagraphStyle(
-        name="XSubtitle", parent=styles["BodyText"], fontName="Helvetica",
-        fontSize=8.5, leading=10, alignment=TA_CENTER, textColor=GREY_500,
-        spaceAfter=5
+        name="XSubtitle", parent=styles["BodyText"], fontName="Times-Roman",
+        fontSize=12, leading=18, alignment=TA_CENTER, textColor=colors.black,
+        spaceAfter=6
     ))
     styles.add(ParagraphStyle(
-        name="XH1", parent=styles["Heading1"], fontName="Helvetica-Bold",
-        fontSize=11.5, leading=13, textColor=GREEN_800,
-        spaceBefore=5, spaceAfter=2
+        name="XH1", parent=styles["Heading1"], fontName="Times-Bold",
+        fontSize=14, leading=21, textColor=colors.black,
+        spaceBefore=8, spaceAfter=6
     ))
     styles.add(ParagraphStyle(
-        name="XH2", parent=styles["Heading2"], fontName="Helvetica-Bold",
-        fontSize=9.5, leading=11, textColor=GREEN_700,
-        spaceBefore=3, spaceAfter=1
+        name="XH2", parent=styles["Heading2"], fontName="Times-Bold",
+        fontSize=13, leading=19.5, textColor=colors.black,
+        spaceBefore=6, spaceAfter=6
     ))
     styles.add(ParagraphStyle(
-        name="XBody", parent=styles["BodyText"], fontName="Helvetica",
-        fontSize=8.5, leading=10.5, textColor=GREY_700, spaceAfter=2
+        name="XBody", parent=styles["BodyText"], fontName="Times-Roman",
+        fontSize=12, leading=18, alignment=4, textColor=colors.black,
+        spaceAfter=6, firstLineIndent=.5*cm
     ))
     styles.add(ParagraphStyle(
-        name="XSmall", parent=styles["BodyText"], fontName="Helvetica",
-        fontSize=7.2, leading=8.3, textColor=GREY_700, spaceAfter=1
+        name="XSmall", parent=styles["BodyText"], fontName="Times-Roman",
+        fontSize=12, leading=18, alignment=4, textColor=colors.black,
+        spaceAfter=6, firstLineIndent=.5*cm
     ))
     styles.add(ParagraphStyle(
-        name="XCaption", parent=styles["BodyText"], fontName="Helvetica-Oblique",
-        fontSize=7.0, leading=8.2, alignment=TA_CENTER, textColor=GREY_500,
+        name="XCaption", parent=styles["BodyText"], fontName="Times-Italic",
+        fontSize=12, leading=18, alignment=TA_CENTER, textColor=colors.black,
         wordWrap="CJK", splitLongWords=True,
-        spaceBefore=1, spaceAfter=1
+        spaceBefore=1, spaceAfter=6
     ))
     styles.add(ParagraphStyle(
-        name="XCover", parent=styles["Title"], fontName="Helvetica-Bold",
-        fontSize=20, leading=22, alignment=TA_CENTER, textColor=GREEN_900,
-        spaceAfter=5
+        name="XCover", parent=styles["Title"], fontName="Times-Bold",
+        fontSize=18, leading=22, alignment=TA_CENTER, textColor=colors.black,
+        spaceAfter=6
     ))
 
     def P(text, style="XBody"):
@@ -1339,22 +1345,32 @@ elif page == "Rapport PDF":
         safe = safe.replace("@@B_OPEN@@", "<b>").replace("@@B_CLOSE@@", "</b>")
         return Paragraph(safe, styles[style])
 
+    class NumberedCanvas(Canvas):
+        """Retarde l’émission des pages pour afficher Page X sur Y."""
+        def __init__(self, *args, **kwargs):
+            Canvas.__init__(self, *args, **kwargs)
+            self._saved_page_states = []
+        def showPage(self):
+            self._saved_page_states.append(dict(self.__dict__))
+            self._startPage()
+        def save(self):
+            total = len(self._saved_page_states)
+            for state in self._saved_page_states:
+                self.__dict__.update(state)
+                self.setFont("Times-Roman", 10)
+                self.setFillColor(colors.black)
+                self.drawRightString(A4[0]-2.5*cm, .9*cm, f"Page {self._pageNumber} sur {total}")
+                Canvas.showPage(self)
+            Canvas.save(self)
+
     def pdf_footer(canvas, doc):
         canvas.saveState()
-        # Bandeau supérieur discret
-        canvas.setFillColor(GREEN_800)
-        canvas.rect(0, A4[1]-0.22*cm, A4[0], 0.22*cm, stroke=0, fill=1)
-        # Pied de page
+        # En-tête organisation aligné à gauche (aucun logo n’est fourni avec le script).
+        canvas.setFont("Times-Roman", 10)
+        canvas.setFillColor(colors.black)
+        canvas.drawString(2.5*cm, A4[1]-1.7*cm, "ISRA / CRA Saint-Louis")
         canvas.setStrokeColor(BORDER)
-        canvas.line(1.2*cm, 1.08*cm, A4[0]-1.2*cm, 1.08*cm)
-        canvas.setFont("Helvetica", 7)
-        canvas.setFillColor(GREY_500)
-        canvas.drawString(
-            1.3*cm, .72*cm,
-            "Carnet de stage d’immersion · L2 DSTAAN · ISRA / CRA Saint-Louis"
-        )
-        canvas.setFillColor(GREEN_800)
-        canvas.drawRightString(A4[0]-1.3*cm, .72*cm, f"PAGE {doc.page}")
+        canvas.line(2.5*cm, 1.35*cm, A4[0]-2.5*cm, 1.35*cm)
         canvas.restoreState()
 
     class RawPhotoFlowable(Flowable):
@@ -1406,7 +1422,7 @@ elif page == "Rapport PDF":
         photos = db_exec("SELECT * FROM photos WHERE log_id=? ORDER BY id", (log_id,), fetch=True)
 
         buf = io.BytesIO()
-        doc = SimpleDocTemplate(buf, pagesize=A4, rightMargin=1.3*cm, leftMargin=1.3*cm, topMargin=0.9*cm, bottomMargin=1.0*cm)
+        doc = SimpleDocTemplate(buf, pagesize=A4, rightMargin=2.5*cm, leftMargin=2.5*cm, topMargin=2.5*cm, bottomMargin=2.5*cm)
         story = [
             Spacer(1, 0.04*cm),
             P("RAPPORT JOURNALIER DE STAGE", "XCover"),
@@ -1514,7 +1530,7 @@ elif page == "Rapport PDF":
             P("Signature de l'étudiant : ________________________________", "XBody"),
             P("Visa / observation de l'encadreur : ________________________________", "XBody"),
         ]
-        doc.build(story, onFirstPage=pdf_footer, onLaterPages=pdf_footer)
+        doc.build(story, onFirstPage=pdf_footer, onLaterPages=pdf_footer, canvasmaker=NumberedCanvas)
 
         pdf_bytes = buf.getvalue()
         # Les photos sont désormais injectées directement dans le PDF via
@@ -1615,8 +1631,8 @@ elif page == "Rapport PDF":
         total_hours = sum(float(x.get("hours") or 0) for x in all_logs)
 
         buf_general = io.BytesIO()
-        doc = SimpleDocTemplate(buf_general, pagesize=A4, rightMargin=1.7*cm, leftMargin=1.7*cm,
-                                topMargin=1.7*cm, bottomMargin=1.6*cm)
+        doc = SimpleDocTemplate(buf_general, pagesize=A4, rightMargin=2.5*cm, leftMargin=2.5*cm,
+                                topMargin=2.5*cm, bottomMargin=2.5*cm)
         story = [Spacer(1, 1.4*cm), P("RAPPORT DE FIN DE STAGE D’IMMERSION", "XCover"),
                  P("Synthèse des activités, apprentissages et résultats", "XSubtitle"),
                  Spacer(1, .6*cm), P("ISRA / CRA SAINT-LOUIS", "XCover"), Spacer(1, .5*cm)]
@@ -1625,7 +1641,7 @@ elif page == "Rapport PDF":
             [P("<b>Formation / niveau</b>", "XSmall"), P(f"{pp.get('formation') or '—'} — {pp.get('level') or '—'}", "XSmall")],
             [P("<b>Établissement</b>", "XSmall"), P(pp.get("institution"), "XSmall")],
             [P("<b>Structure d’accueil</b>", "XSmall"), P(pp.get("host_structure") or "ISRA / CRA Saint-Louis", "XSmall")],
-            [P("<b>Période</b>", "XSmall"), P(f"{fmt_date(pp.get('start_date'))} au {fmt_date(pp.get('end_date'))}", "XSmall")],
+            [P("<b>Période</b>", "XSmall"), P(f"{fmt_date(pp.get('start_date'))} au 06/11/2026", "XSmall")],
             [P("<b>Encadreur principal</b>", "XSmall"), P(pp.get("supervisor"), "XSmall")],
         ]
         ct = Table(cover, colWidths=[4.8*cm, 10.2*cm], hAlign="CENTER")
@@ -1690,6 +1706,32 @@ elif page == "Rapport PDF":
         else:
             story.append(P("Aucune journée n’a encore été enregistrée dans le carnet."))
 
+        # Photographies du carnet : incluses dans le rapport général, avec date et légende.
+        all_photos = [dict(x) for x in db_exec("SELECT * FROM photos ORDER BY photo_date,id", fetch=True)]
+        story.append(P("PHOTOGRAPHIES DU STAGE", "XH1"))
+        if all_photos:
+            photo_rows = []
+            photo_cells = []
+            for index, ph in enumerate(all_photos, 1):
+                raw = ph.get("data")
+                caption = ph.get("caption") or ph.get("filename") or f"Photo {index}"
+                caption = str(caption).replace("\n", " ").strip()
+                cell = [RawPhotoFlowable(raw, max_width=7.0*cm, max_height=5.2*cm),
+                        P(f"Photo {index} — {caption} · {fmt_date(ph.get('photo_date'))}", "XCaption")]
+                photo_cells.append(cell)
+            for i in range(0, len(photo_cells), 2):
+                row = photo_cells[i:i+2]
+                if len(row) == 1:
+                    row.append("")
+                photo_rows.append(row)
+            pt = Table(photo_rows, colWidths=[7.8*cm, 7.8*cm], hAlign="CENTER", splitByRow=1, splitInRow=1)
+            pt.setStyle(TableStyle([("VALIGN",(0,0),(-1,-1),"TOP"),("ALIGN",(0,0),(-1,-1),"CENTER"),
+                                    ("LEFTPADDING",(0,0),(-1,-1),3),("RIGHTPADDING",(0,0),(-1,-1),3),
+                                    ("TOPPADDING",(0,0),(-1,-1),5),("BOTTOMPADDING",(0,0),(-1,-1),8)]))
+            story.append(pt)
+        else:
+            story.append(P("Aucune photographie n’a encore été ajoutée au carnet."))
+
         story.append(P("6. BILAN DES TRAVAUX ET APPRENTISSAGES", "XH1"))
         metrics = [[P("<b>Journées</b>", "XSmall"), P("<b>Heures</b>", "XSmall"),
                     P("<b>Analyses</b>", "XSmall"), P("<b>Échantillons</b>", "XSmall")],
@@ -1712,10 +1754,21 @@ elif page == "Rapport PDF":
                                     ("BACKGROUND",(0,0),(-1,0),GREEN_100),
                                     ("VALIGN",(0,0),(-1,-1),"TOP")]))
             story.append(at)
+        story.append(P("MATÉRIEL ET ÉQUIPEMENTS", "XH1"))
         if all_equipment:
-            equipment_names = [str(x.get("name")).strip() for x in all_equipment if x.get("name")]
-            if equipment_names:
-                story.append(P("<b>Matériel / équipements rencontrés :</b> " + ", ".join(dict.fromkeys(equipment_names))))
+            erows = [[P("<b>Équipement</b>","XSmall"),P("<b>Fonction et principe</b>","XSmall"),P("<b>Sécurité, observations et acquis</b>","XSmall")]]
+            for eq in all_equipment:
+                erows.append([P(f"{eq.get('name') or '—'}\n{eq.get('category') or ''}","XSmall"),
+                              P(f"{eq.get('function') or '—'}\nPrincipe : {eq.get('principle') or '—'}","XSmall"),
+                              P(f"Sécurité : {eq.get('safety') or '—'}\nObservations : {eq.get('observations') or '—'}\nMaîtrisé : {'Oui' if eq.get('learned') else 'Non'}","XSmall")])
+            et = Table(erows, colWidths=[4.0*cm,5.7*cm,6.0*cm], repeatRows=1)
+            et.setStyle(TableStyle([("GRID",(0,0),(-1,-1),.4,BORDER),("BACKGROUND",(0,0),(-1,0),GREEN_100),
+                                    ("VALIGN",(0,0),(-1,-1),"TOP"),("LEFTPADDING",(0,0),(-1,-1),5),
+                                    ("RIGHTPADDING",(0,0),(-1,-1),5),("TOPPADDING",(0,0),(-1,-1),5),
+                                    ("BOTTOMPADDING",(0,0),(-1,-1),5)]))
+            story.append(et)
+        else:
+            story.append(P("Aucun équipement n’a encore été enregistré dans la rubrique Matériel."))
         if all_skills:
             skill_names = [str(x.get("skill")).strip() for x in all_skills if x.get("skill")]
             if skill_names:
@@ -1725,7 +1778,7 @@ elif page == "Rapport PDF":
         chapter("9. RECOMMANDATIONS ET PERSPECTIVES", g.get("recommendations"))
         story += [Spacer(1, .4*cm), P("Signature du stagiaire : __________________________________________", "XBody"),
                   P("Visa de l’encadreur : ______________________________________________", "XBody")]
-        doc.build(story, onFirstPage=pdf_footer, onLaterPages=pdf_footer)
+        doc.build(story, onFirstPage=pdf_footer, onLaterPages=pdf_footer, canvasmaker=NumberedCanvas)
         return buf_general.getvalue()
 
     if periods:
