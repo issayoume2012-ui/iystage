@@ -1694,7 +1694,10 @@ elif page == "Rapport PDF":
                 outcome = " — ".join(str(v).strip() for v in [item.get("results"), item.get("observations")] if v and str(v).strip())
                 rows.append([P(fmt_date(item.get("log_date")), "XSmall"), P(activity or "—", "XSmall"),
                              P(outcome or "—", "XSmall"), P(f"{float(item.get('hours') or 0):g} h", "XSmall")])
-            tbl = Table(rows, colWidths=[2.1*cm, 5.4*cm, 5.5*cm, 1.5*cm], repeatRows=1, hAlign="LEFT")
+            # Une journée peut contenir beaucoup de texte : autoriser le
+            # découpage d'une ligne évite un LayoutError si elle dépasse une page.
+            tbl = Table(rows, colWidths=[2.1*cm, 5.4*cm, 5.5*cm, 1.5*cm],
+                        repeatRows=1, hAlign="LEFT", splitByRow=1, splitInRow=1)
             tbl.setStyle(TableStyle([("GRID",(0,0),(-1,-1),.4,BORDER),
                                      ("BACKGROUND",(0,0),(-1,0),GREEN_100),
                                      ("VALIGN",(0,0),(-1,-1),"TOP"),
@@ -1724,7 +1727,8 @@ elif page == "Rapport PDF":
                 if len(row) == 1:
                     row.append("")
                 photo_rows.append(row)
-            pt = Table(photo_rows, colWidths=[7.8*cm, 7.8*cm], hAlign="CENTER", splitByRow=1, splitInRow=1)
+            pt = Table(photo_rows, colWidths=[7.8*cm, 7.8*cm], hAlign="CENTER",
+                       splitByRow=1, splitInRow=1)
             pt.setStyle(TableStyle([("VALIGN",(0,0),(-1,-1),"TOP"),("ALIGN",(0,0),(-1,-1),"CENTER"),
                                     ("LEFTPADDING",(0,0),(-1,-1),3),("RIGHTPADDING",(0,0),(-1,-1),3),
                                     ("TOPPADDING",(0,0),(-1,-1),5),("BOTTOMPADDING",(0,0),(-1,-1),8)]))
@@ -1749,7 +1753,8 @@ elif page == "Rapport PDF":
                 arows.append([P(fmt_date(a.get("analysis_date")), "XSmall"),
                               P(a.get("analysis_name") or "—", "XSmall"),
                               P(a.get("result") or a.get("interpretation") or "—", "XSmall")])
-            at = Table(arows, colWidths=[2.5*cm, 5.2*cm, 6.7*cm], repeatRows=1)
+            at = Table(arows, colWidths=[2.5*cm, 5.2*cm, 6.7*cm],
+                       repeatRows=1, splitByRow=1, splitInRow=1)
             at.setStyle(TableStyle([("GRID",(0,0),(-1,-1),.4,BORDER),
                                     ("BACKGROUND",(0,0),(-1,0),GREEN_100),
                                     ("VALIGN",(0,0),(-1,-1),"TOP")]))
@@ -1761,7 +1766,8 @@ elif page == "Rapport PDF":
                 erows.append([P(f"{eq.get('name') or '—'}\n{eq.get('category') or ''}","XSmall"),
                               P(f"{eq.get('function') or '—'}\nPrincipe : {eq.get('principle') or '—'}","XSmall"),
                               P(f"Sécurité : {eq.get('safety') or '—'}\nObservations : {eq.get('observations') or '—'}\nMaîtrisé : {'Oui' if eq.get('learned') else 'Non'}","XSmall")])
-            et = Table(erows, colWidths=[4.0*cm,5.7*cm,6.0*cm], repeatRows=1)
+            et = Table(erows, colWidths=[4.0*cm,5.7*cm,6.0*cm],
+                       repeatRows=1, splitByRow=1, splitInRow=1)
             et.setStyle(TableStyle([("GRID",(0,0),(-1,-1),.4,BORDER),("BACKGROUND",(0,0),(-1,0),GREEN_100),
                                     ("VALIGN",(0,0),(-1,-1),"TOP"),("LEFTPADDING",(0,0),(-1,-1),5),
                                     ("RIGHTPADDING",(0,0),(-1,-1),5),("TOPPADDING",(0,0),(-1,-1),5),
