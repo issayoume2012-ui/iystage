@@ -1814,12 +1814,99 @@ elif page == "Rapport PDF":
         doc.build(story, onFirstPage=pdf_footer, onLaterPages=pdf_footer, canvasmaker=NumberedCanvas)
         return buf_general.getvalue()
 
+    def make_general_report_docx():
+        """Génère le rapport général Word à partir des données du carnet."""
+        # Le fichier DOCX est un paquet Office Open XML construit avec la bibliothèque standard.
+        import zipfile
+        import html
+        from xml.sax.saxutils import escape
+        pp = profile()
+        sr = db_exec("SELECT * FROM general_report_settings WHERE id=1", fetch=True)
+        g = dict(sr[0]) if sr else {}
+        periods_doc = [dict(x) for x in db_exec("SELECT * FROM internship_periods ORDER BY start_date,id", fetch=True)]
+        logs_doc = [dict(x) for x in db_exec("SELECT * FROM daily_logs ORDER BY log_date,id", fetch=True)]
+        analyses_doc = [dict(x) for x in db_exec("SELECT * FROM analyses ORDER BY analysis_date,id", fetch=True)]
+        samples_doc = [dict(x) for x in db_exec("SELECT * FROM samples ORDER BY sample_date,id", fetch=True)]
+        skills_doc = [dict(x) for x in db_exec("SELECT * FROM skills ORDER BY category,skill", fetch=True)]
+        equipment_doc = [dict(x) for x in db_exec("SELECT * FROM equipment ORDER BY category,name", fetch=True)]
+        total_hours = sum(float(x.get("hours") or 0) for x in logs_doc)
+        parts=[]
+        def para(text, style=None):
+            text=str(text or "—")
+            ppr=f'<w:pPr><w:pStyle w:val="{style}"/></w:pPr>' if style else ""
+            parts.append(f'<w:p>{ppr}<w:r><w:t xml:space="preserve">{escape(text)}</w:t></w:r></w:p>')
+        def heading(title, body):
+            if str(body or "").strip(): para(title,"Heading1"); para(body)
+        def table(headers, rows):
+            def cell(v, header=False):
+                fill='DDF3E2' if header else 'FFFFFF'
+                bold='<w:b/>' if header else ''
+                txt=escape(str(v or '—'))
+                return f'<w:tc><w:tcPr><w:shd w:fill="{fill}"/></w:tcPr><w:p><w:r><w:rPr>{bold}</w:rPr><w:t xml:space="preserve">{txt}</w:t></w:r></w:p></w:tc>'
+            rowsxml='<w:tr>'+''.join(cell(x,True) for x in headers)+'</w:tr>'
+            for row in rows: rowsxml+='<w:tr>'+''.join(cell(x) for x in row)+'</w:tr>'
+            parts.append('<w:tbl><w:tblPr><w:tblStyle w:val="TableGrid"/><w:tblW w:w="0" w:type="auto"/></w:tblPr>'+rowsxml+'</w:tbl>')
+        para("RAPPORT DE FIN DE STAGE D’IMMERSION","Title")
+        para("Synthèse des activités, apprentissages et résultats","Subtitle")
+        para("ISRA / CRA SAINT-LOUIS","Subtitle")
+        table(["Informations","Détails"],[["Stagiaire",pp.get("student_name")],["Formation / niveau",f"{pp.get('formation') or '—'} — {pp.get('level') or '—'}"],["Établissement",pp.get("institution")],["Structure d’accueil",pp.get("host_structure") or "ISRA / CRA Saint-Louis"],["Période",f"{fmt_date(pp.get('start_date'))} au 06/11/2026"],["Encadreur principal",pp.get("supervisor")],["Année académique",pp.get("academic_year") or "à préciser"]])
+        parts.append('<w:p><w:r><w:br w:type="page"/></w:r></w:p>')
+        heading("REMERCIEMENTS",g.get("acknowledgements"))
+        intro=g.get("context") or pp.get("presentation") or ""
+        if pp.get("objectives"): intro += "\n\nObjectifs : "+str(pp.get("objectives"))
+        heading("1. INTRODUCTION ET OBJECTIFS DU STAGE",intro)
+        heading("2. PRÉSENTATION DE LA STRUCTURE D’ACCUEIL",g.get("structure_presentation"))
+        heading("3. PROBLÉMATIQUE ET DÉMARCHE","Problématique : "+str(g.get("problem_statement") or "Non précisée.")+"\n\nMéthodologie : "+str(g.get("methodology") or "Non précisée."))
+        para("4. DÉROULEMENT DU STAGE D’IMMERSION","Heading1")
+        para("Le stage est présenté par périodes ou services visités. Le carnet journalier conserve le détail complet de chaque journée ; le présent rapport en retient une synthèse pour éviter les répétitions.")
+        if periods_doc:
+            for i,x in enumerate(periods_doc,1):
+                para(f"4.{i}. {x.get('title') or 'Période de stage'}","Heading2")
+                para(f"Période : {fmt_date(x.get('start_date'))} – {fmt_date(x.get('end_date'))} | Encadreur : {x.get('supervisor') or pp.get('supervisor') or '—'}")
+                for lab,key in [("Objectifs","objectives"),("Activités principales","activities"),("Méthodes utilisées","methods"),("Résultats et observations","results"),("Compétences acquises","skills"),("Difficultés / solutions","difficulties"),("Bilan","conclusion")]:
+                    if x.get(key): para(lab+" : "+str(x[key]))
+        else: para("Aucune période n’a été définie. Les activités journalières ci-dessous donnent néanmoins une vue d’ensemble du stage.")
+        para("5. SYNTHÈSE DU CARNET JOURNALIER","Heading1")
+        para(f"Le carnet contient {len(logs_doc)} journée(s) enregistrée(s), pour un total de {total_hours:.1f} heure(s). Les détails restent consultables dans le carnet et les rapports journaliers individuels.")
+        if logs_doc: table(["Date","Activité","Introduction","Ce que j’ai retenu"],[[fmt_date(x.get("log_date"))," — ".join(str(v).strip() for v in [x.get("title"),x.get("activities")] if v and str(v).strip()) or "—",x.get("introduction"),x.get("lessons")] for x in logs_doc])
+        else: para("Aucune journée n’a encore été enregistrée dans le carnet.")
+        para("6. BILAN DES TRAVAUX ET APPRENTISSAGES","Heading1")
+        table(["Journées","Heures","Analyses","Échantillons"],[[len(logs_doc),f"{total_hours:.1f}",len(analyses_doc),len(samples_doc)]])
+        if analyses_doc:
+            para("Principaux travaux analytiques","Heading2")
+            table(["Date","Analyse","Résultat principal"],[[fmt_date(a.get("analysis_date")),a.get("analysis_name"),a.get("result") or a.get("interpretation")] for a in analyses_doc])
+        para("MATÉRIEL ET ÉQUIPEMENTS","Heading1")
+        if equipment_doc: table(["Équipement","Fonction et principe","Sécurité, observations et acquis"],[[str(e.get("name") or '—')+"\n"+str(e.get("category") or ''),str(e.get("function") or '—')+"\nPrincipe : "+str(e.get("principle") or '—'),"Sécurité : "+str(e.get("safety") or '—')+"\nObservations : "+str(e.get("observations") or '—')+"\nMaîtrisé : "+("Oui" if e.get("learned") else "Non")] for e in equipment_doc])
+        else: para("Aucun équipement n’a encore été enregistré dans la rubrique Matériel.")
+        names=[str(x.get("skill")).strip() for x in skills_doc if x.get("skill")]
+        if names: para("Compétences répertoriées : "+"; ".join(dict.fromkeys(names)))
+        heading("7. BILAN PERSONNEL",g.get("general_assessment")); heading("8. CONCLUSION GÉNÉRALE",g.get("general_conclusion")); heading("9. RECOMMANDATIONS ET PERSPECTIVES",g.get("recommendations"))
+        para("PHOTOGRAPHIES DU STAGE","Heading1")
+        photos_doc=[dict(x) for x in db_exec("SELECT * FROM photos ORDER BY photo_date,id",fetch=True)]
+        if photos_doc: para("Les photos associées sont disponibles dans le rapport PDF et le carnet de stage.")
+        else: para("Aucune photographie n’a encore été ajoutée au carnet.")
+        para("Signature du stagiaire : __________________________________________")
+        para("Visa de l’encadreur : ______________________________________________")
+        document_xml='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>'+''.join(parts)+'<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1000" w:right="1000" w:bottom="1000" w:left="1000"/></w:sectPr></w:body></w:document>'
+        styles='<?xml version="1.0" encoding="UTF-8"?><w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/><w:rPr><w:rFonts w:ascii="Aptos" w:hAnsi="Aptos"/><w:sz w:val="21"/></w:rPr></w:style><w:style w:type="paragraph" w:styleId="Title"><w:name w:val="Title"/><w:rPr><w:b/><w:color w:val="14532D"/><w:sz w:val="36"/></w:rPr></w:style><w:style w:type="paragraph" w:styleId="Subtitle"><w:name w:val="Subtitle"/><w:rPr><w:color w:val="166534"/><w:sz w:val="24"/></w:rPr></w:style><w:style w:type="paragraph" w:styleId="Heading1"><w:name w:val="heading 1"/><w:basedOn w:val="Normal"/><w:pPr><w:keepNext/></w:pPr><w:rPr><w:b/><w:color w:val="14532D"/><w:sz w:val="30"/></w:rPr></w:style><w:style w:type="paragraph" w:styleId="Heading2"><w:name w:val="heading 2"/><w:basedOn w:val="Normal"/><w:pPr><w:keepNext/></w:pPr><w:rPr><w:b/><w:color w:val="166534"/><w:sz w:val="24"/></w:rPr></w:style><w:style w:type="table" w:styleId="TableGrid"><w:name w:val="Table Grid"/><w:tblPr><w:tblBorders><w:top w:val="single" w:sz="4" w:color="B7D7BF"/><w:left w:val="single" w:sz="4" w:color="B7D7BF"/><w:bottom w:val="single" w:sz="4" w:color="B7D7BF"/><w:right w:val="single" w:sz="4" w:color="B7D7BF"/><w:insideH w:val="single" w:sz="4" w:color="B7D7BF"/><w:insideV w:val="single" w:sz="4" w:color="B7D7BF"/></w:tblBorders></w:tblPr></w:style></w:styles>'
+        content_types='<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/></Types>'
+        rels='<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>'
+        docrels='<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>'
+        out=io.BytesIO()
+        with zipfile.ZipFile(out,"w",zipfile.ZIP_DEFLATED) as z:
+            z.writestr("[Content_Types].xml",content_types); z.writestr("_rels/.rels",rels)
+            z.writestr("word/document.xml",document_xml); z.writestr("word/styles.xml",styles); z.writestr("word/_rels/document.xml.rels",docrels)
+        return out.getvalue()
+
     if periods:
         st.dataframe(pd.DataFrame([{ "Période": x["title"], "Début": fmt_date(x["start_date"]), "Fin": fmt_date(x["end_date"]), "Encadreur": x.get("supervisor", "") } for x in periods]), use_container_width=True, hide_index=True)
     st.info(f"Le rapport général inclura {len(periods)} période(s), {len(db_exec('SELECT id FROM daily_logs', fetch=True))} journée(s), {len(db_exec('SELECT id FROM analyses', fetch=True))} analyse(s) et les chapitres institutionnels que tu auras renseignés.")
     general_pdf = make_general_report_pdf()
+    general_docx = make_general_report_docx()
     st.download_button("📘 Télécharger le RAPPORT GÉNÉRAL DE STAGE (PDF)", data=general_pdf,
                        file_name="rapport_general_stage_ISRA_CRA.pdf", mime="application/pdf", type="primary", use_container_width=True)
+
+    st.download_button("📝 Télécharger le RAPPORT GÉNÉRAL DE STAGE (Word)", data=general_docx, file_name="rapport_general_stage_ISRA_CRA.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document", use_container_width=True)
 
     # -------- Journalier --------
     st.markdown("### 📄 Rapport journalier")
