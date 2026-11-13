@@ -1469,13 +1469,14 @@ elif page == "Rapport PDF":
             ("TOPPADDING",(0,0),(-1,-1),3),
             ("BOTTOMPADDING",(0,0),(-1,-1),3),
         ]))
-        story = [
-            Spacer(1, 0.08*cm),
-            P("RAPPORT JOURNALIER DE STAGE", "XCover"),
-            P("L2 DSTAAN · Stage d’immersion · ISRA / CRA Saint-Louis", "XSubtitle"),
-            t,
-            Spacer(1, 4),
-        ]
+        day_title = r.get("title") or r.get("activities") or "Activités de stage"
+        daily_top=Table([[P(f"<b>ÉTABLISSEMENT / ÉCOLE</b><br/>[LOGO ÉCOLE]<br/>{p.get('institution') or 'À renseigner'}<br/>{p.get('formation') or 'Formation'} · {p.get('level') or 'Niveau'}", "XSmall"),P(f"<b>STRUCTURE D’ACCUEIL</b><br/>[LOGO ENTREPRISE]<br/>{p.get('host_structure') or 'ISRA / CRA Saint-Louis'}", "XSmall")]],colWidths=[7.5*cm,7.5*cm])
+        daily_top.setStyle(TableStyle([("BOX",(0,0),(-1,-1),1,colors.HexColor("#14532d")),("BACKGROUND",(0,0),(-1,-1),colors.HexColor("#f0fdf4")),("VALIGN",(0,0),(-1,-1),"TOP"),("LEFTPADDING",(0,0),(-1,-1),10),("RIGHTPADDING",(0,0),(-1,-1),10),("TOPPADDING",(0,0),(-1,-1),10),("BOTTOMPADDING",(0,0),(-1,-1),10)]))
+        daily_band=Table([[P("RAPPORT DE STAGE", "XCover")],[P("JOURNALIER · " + str(fmt_date(r.get("log_date"))), "XSubtitle")],[P("Sujet : " + str(day_title), "XBody")]],colWidths=[15*cm])
+        daily_band.setStyle(TableStyle([("BACKGROUND",(0,0),(-1,-1),colors.HexColor("#dcfce7")),("TEXTCOLOR",(0,0),(-1,-1),colors.HexColor("#14532d")),("BOX",(0,0),(-1,-1),1.2,colors.HexColor("#16a34a")),("ALIGN",(0,0),(-1,-1),"CENTER"),("VALIGN",(0,0),(-1,-1),"MIDDLE"),("TOPPADDING",(0,0),(-1,-1),10),("BOTTOMPADDING",(0,0),(-1,-1),10)]))
+        daily_people=Table([[P("<b>PRÉSENTÉ PAR</b><br/><br/>"+str(p.get("student_name") or "Nom et prénom"),"XBody"),P("<b>ENCADRÉ PAR</b><br/><br/>"+str(r.get("supervisor") or p.get("supervisor") or "Encadreur à préciser"),"XBody")]],colWidths=[7.5*cm,7.5*cm])
+        daily_people.setStyle(TableStyle([("LINEABOVE",(0,0),(-1,0),1,colors.HexColor("#16a34a")),("VALIGN",(0,0),(-1,-1),"TOP"),("TOPPADDING",(0,0),(-1,-1),10)]))
+        story=[daily_top,Spacer(1,1.25*cm),P("Année académique : "+str(p.get("academic_year") or "à préciser"),"XSubtitle"),Spacer(1,.4*cm),daily_band,Spacer(1,1.2*cm),daily_people,Spacer(1,.6*cm),P("ISRA · CENTRE DE RECHERCHES AGRICOLES DE SAINT-LOUIS","XCaption"),PageBreak(),t,Spacer(1,4)]
 
         sections = [
             ("1. Introduction", r.get("introduction")),
@@ -1655,26 +1656,16 @@ elif page == "Rapport PDF":
         buf_general = io.BytesIO()
         doc = SimpleDocTemplate(buf_general, pagesize=A4, rightMargin=2.5*cm, leftMargin=2.5*cm,
                                 topMargin=2.5*cm, bottomMargin=2.5*cm)
-        story = [Spacer(1, 1.4*cm), P("RAPPORT DE FIN DE STAGE D’IMMERSION", "XCover"),
-                 P("Synthèse des activités, apprentissages et résultats", "XSubtitle"),
-                 Spacer(1, .6*cm), P("ISRA / CRA SAINT-LOUIS", "XCover"), Spacer(1, .5*cm)]
-        cover = [
-            [P("<b>Stagiaire</b>", "XSmall"), P(pp.get("student_name"), "XSmall")],
-            [P("<b>Formation / niveau</b>", "XSmall"), P(f"{pp.get('formation') or '—'} — {pp.get('level') or '—'}", "XSmall")],
-            [P("<b>Établissement</b>", "XSmall"), P(pp.get("institution"), "XSmall")],
-            [P("<b>Structure d’accueil</b>", "XSmall"), P(pp.get("host_structure") or "ISRA / CRA Saint-Louis", "XSmall")],
-            [P("<b>Période</b>", "XSmall"), P(f"{fmt_date(pp.get('start_date'))} au 06/11/2026", "XSmall")],
-            [P("<b>Encadreur principal</b>", "XSmall"), P(pp.get("supervisor"), "XSmall")],
-        ]
-        ct = Table(cover, colWidths=[4.8*cm, 10.2*cm], hAlign="CENTER")
-        ct.setStyle(TableStyle([("GRID",(0,0),(-1,-1),.5,BORDER),
-                                ("BACKGROUND",(0,0),(0,-1),GREEN_50),
-                                ("VALIGN",(0,0),(-1,-1),"TOP"),
-                                ("LEFTPADDING",(0,0),(-1,-1),8),
-                                ("RIGHTPADDING",(0,0),(-1,-1),8),
-                                ("TOPPADDING",(0,0),(-1,-1),7),
-                                ("BOTTOMPADDING",(0,0),(-1,-1),7)]))
-        story += [ct, Spacer(1, .7*cm), P("Année académique : " + str(pp.get("academic_year") or "à préciser"), "XSubtitle"), PageBreak()]
+        cover_subject = pp.get("objectives") or g.get("context") or "Synthèse des activités, apprentissages et résultats"
+        cover_top = Table([[P(f"<b>ÉTABLISSEMENT / ÉCOLE</b><br/>[LOGO ÉCOLE]<br/>{pp.get('institution') or 'À renseigner'}<br/>{pp.get('formation') or 'Formation'} · {pp.get('level') or 'Niveau'}", "XSmall"), P(f"<b>STRUCTURE D’ACCUEIL</b><br/>[LOGO ENTREPRISE]<br/>{pp.get('host_structure') or 'ISRA / CRA Saint-Louis'}", "XSmall")]], colWidths=[7.5*cm,7.5*cm])
+        cover_top.setStyle(TableStyle([("BOX",(0,0),(-1,-1),1,colors.HexColor("#14532d")),("BACKGROUND",(0,0),(-1,-1),colors.HexColor("#f0fdf4")),("VALIGN",(0,0),(-1,-1),"TOP"),("LEFTPADDING",(0,0),(-1,-1),12),("RIGHTPADDING",(0,0),(-1,-1),12),("TOPPADDING",(0,0),(-1,-1),12),("BOTTOMPADDING",(0,0),(-1,-1),12)]))
+        cover_title = Table([[P("RAPPORT DE STAGE", "XCover")],[P("FIN DE STAGE D’IMMERSION", "XSubtitle")],[P("Sujet : " + str(cover_subject), "XBody")]], colWidths=[15*cm])
+        cover_title.setStyle(TableStyle([("BACKGROUND",(0,0),(-1,-1),colors.HexColor("#dcfce7")),("TEXTCOLOR",(0,0),(-1,-1),colors.HexColor("#14532d")),("BOX",(0,0),(-1,-1),1.2,colors.HexColor("#16a34a")),("ALIGN",(0,0),(-1,-1),"CENTER"),("VALIGN",(0,0),(-1,-1),"MIDDLE"),("TOPPADDING",(0,0),(-1,-1),11),("BOTTOMPADDING",(0,0),(-1,-1),11)]))
+        cover_people = Table([[P("<b>PRÉSENTÉ PAR</b><br/><br/>" + str(pp.get("student_name") or "Nom et prénom"), "XBody"), P("<b>ENCADRÉ PAR</b><br/><br/>" + str(pp.get("supervisor") or "Encadreur principal à préciser"), "XBody")]], colWidths=[7.5*cm,7.5*cm])
+        cover_people.setStyle(TableStyle([("LINEABOVE",(0,0),(-1,0),1,colors.HexColor("#16a34a")),("VALIGN",(0,0),(-1,-1),"TOP"),("LEFTPADDING",(0,0),(-1,-1),10),("TOPPADDING",(0,0),(-1,-1),12)]))
+        cover_period = Table([[P("<b>ANNÉE ACADÉMIQUE</b>  " + str(pp.get("academic_year") or "À PRÉCISER"), "XSubtitle")],[P("Stage effectué du " + str(fmt_date(pp.get("start_date"))) + " au " + str(fmt_date(pp.get("end_date") or "2026-11-06")), "XBody")],[P("Au sein de " + str(pp.get("host_structure") or "ISRA / CRA Saint-Louis"), "XBody")]], colWidths=[15*cm])
+        cover_period.setStyle(TableStyle([("ALIGN",(0,0),(-1,-1),"CENTER"),("TOPPADDING",(0,0),(-1,-1),7),("BOTTOMPADDING",(0,0),(-1,-1),7)]))
+        story = [Spacer(1,.7*cm), cover_top, Spacer(1,1.5*cm), cover_period, Spacer(1,.6*cm), cover_title, Spacer(1,1.4*cm), cover_people, Spacer(1,.6*cm), P("ISRA · CENTRE DE RECHERCHES AGRICOLES DE SAINT-LOUIS", "XCaption"), PageBreak()]
 
         def chapter(title, body):
             if str(body or "").strip():
@@ -1846,10 +1837,13 @@ elif page == "Rapport PDF":
             rowsxml='<w:tr>'+''.join(cell(x,True) for x in headers)+'</w:tr>'
             for row in rows: rowsxml+='<w:tr>'+''.join(cell(x) for x in row)+'</w:tr>'
             parts.append('<w:tbl><w:tblPr><w:tblStyle w:val="TableGrid"/><w:tblLook w:firstRow="1" w:lastRow="0" w:firstColumn="0" w:lastColumn="0" w:noHBand="0" w:noVBand="1"/><w:tblW w:w="0" w:type="auto"/></w:tblPr>'+rowsxml+'</w:tbl>')
-        para("RAPPORT DE FIN DE STAGE D’IMMERSION","CoverTitle")
-        para("Synthèse des activités, apprentissages et résultats","Subtitle")
-        para("ISRA  •  CRA SAINT-LOUIS","CoverOrg")
-        table(["Informations","Détails"],[["Stagiaire",pp.get("student_name")],["Formation / niveau",f"{pp.get('formation') or '—'} — {pp.get('level') or '—'}"],["Établissement",pp.get("institution")],["Structure d’accueil",pp.get("host_structure") or "ISRA / CRA Saint-Louis"],["Période",f"{fmt_date(pp.get('start_date'))} au 06/11/2026"],["Encadreur principal",pp.get("supervisor")],["Année académique",pp.get("academic_year") or "à préciser"]])
+        table(["ÉTABLISSEMENT / ÉCOLE", "STRUCTURE D’ACCUEIL"],[["[LOGO ÉCOLE]\n"+str(pp.get("institution") or "À renseigner")+"\n"+str(pp.get("formation") or "Formation")+" · "+str(pp.get("level") or "Niveau"),"[LOGO ENTREPRISE]\n"+str(pp.get("host_structure") or "ISRA / CRA Saint-Louis")]])
+        para("RAPPORT DE STAGE · FIN D’IMMERSION","CoverTitle")
+        para("Année académique : "+str(pp.get("academic_year") or "À préciser"),"CoverOrg")
+        para("Sujet : "+str(pp.get("objectives") or g.get("context") or "Synthèse des activités, apprentissages et résultats"),"Subtitle")
+        para("Stage effectué du "+str(fmt_date(pp.get("start_date")))+" au "+str(fmt_date(pp.get("end_date") or "2026-11-06")),"Subtitle")
+        para("Au sein de "+str(pp.get("host_structure") or "ISRA / CRA Saint-Louis"),"Subtitle")
+        table(["PRÉSENTÉ PAR", "ENCADRÉ PAR"],[[str(pp.get("student_name") or "Nom et prénom"),str(pp.get("supervisor") or "Encadreur principal à préciser")]])
         parts.append('<w:p><w:r><w:br w:type="page"/></w:r></w:p>')
         heading("REMERCIEMENTS",g.get("acknowledgements"))
         intro=g.get("context") or pp.get("presentation") or ""
